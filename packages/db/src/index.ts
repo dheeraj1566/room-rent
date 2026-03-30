@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+﻿import { PrismaClient } from "@prisma/client";
 
 import { getRequiredSetting } from "@rent/config";
 import type { UserInput } from "@rent/shared";
