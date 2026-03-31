@@ -6,13 +6,7 @@ name: roommate-identity
 on:
   push:
     branches:
-      - AkshatLatest
-    paths:
-      - 'apps/api/**'
-      - 'packages/**'
-      - 'package.json'
-      - 'turbo.json'
-      - '.github/workflows/deploy-api.yml'
+      - main
   workflow_dispatch:
 
 jobs:
