@@ -4,7 +4,10 @@ import type { PropertyIdParam, PropertyInput, PropertyQuery } from "@rent/shared
 import {
   createPropertyRecord,
   deletePropertyRecord,
+<<<<<<< HEAD
   getPropertyMetadataRecord,
+=======
+>>>>>>> 690f2eb6a173916d79eb7352294287178a80d61e
   getPropertyRecord,
   listPropertyRecords,
   updatePropertyRecord
@@ -23,6 +26,7 @@ export async function createProperty(req: Request, res: Response, next: NextFunc
   }
 }
 
+<<<<<<< HEAD
 export async function getPropertyMetadata(_req: Request, res: Response, next: NextFunction) {
   try {
     const metadata = await getPropertyMetadataRecord();
@@ -36,6 +40,8 @@ export async function getPropertyMetadata(_req: Request, res: Response, next: Ne
   }
 }
 
+=======
+>>>>>>> 690f2eb6a173916d79eb7352294287178a80d61e
 export async function listProperties(req: Request, res: Response, next: NextFunction) {
   try {
     const { userId } = req.query as PropertyQuery;

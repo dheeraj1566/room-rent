@@ -22,6 +22,7 @@ export const userIdParamSchema = z.object({
   userId: z.string().uuid("userId must be a valid UUID")
 });
 
+<<<<<<< HEAD
 export const propertyRoomSchema = z.object({
   typeId: z.number().int().positive("typeId is required"),
   roomLocationId: z.number().int().positive("roomLocationId is required"),
@@ -34,14 +35,20 @@ export const propertyRoomSchema = z.object({
   attachedWashroom: z.boolean()
 });
 
+=======
+>>>>>>> 690f2eb6a173916d79eb7352294287178a80d61e
 export const propertySchema = z.object({
   userId: z.string().uuid("userId must be a valid UUID"),
   propertyName: z.string().trim().min(1, "propertyName is required"),
   address: z.string().trim().min(5, "address is required"),
   latitude: z.number().finite("latitude must be a valid number"),
+<<<<<<< HEAD
   longitude: z.number().finite("longitude must be a valid number"),
   room: propertyRoomSchema,
   images: z.array(z.string().trim().url("image URL must be valid")).max(20).default([])
+=======
+  longitude: z.number().finite("longitude must be a valid number")
+>>>>>>> 690f2eb6a173916d79eb7352294287178a80d61e
 });
 
 export const propertyIdParamSchema = z.object({
@@ -56,6 +63,11 @@ export type Health = z.infer<typeof healthSchema>;
 export type UserInput = z.infer<typeof userSchema>;
 export type UserIdParam = z.infer<typeof userIdParamSchema>;
 export type PropertyInput = z.infer<typeof propertySchema>;
+<<<<<<< HEAD
 export type PropertyRoomInput = z.infer<typeof propertyRoomSchema>;
 export type PropertyIdParam = z.infer<typeof propertyIdParamSchema>;
 export type PropertyQuery = z.infer<typeof propertyQuerySchema>;
+=======
+export type PropertyIdParam = z.infer<typeof propertyIdParamSchema>;
+export type PropertyQuery = z.infer<typeof propertyQuerySchema>;
+>>>>>>> 690f2eb6a173916d79eb7352294287178a80d61e
