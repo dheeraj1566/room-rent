@@ -12,6 +12,18 @@ const userRequestSchema = {
   }
 };
 
+const propertyRequestSchema = {
+  type: "object",
+  required: ["userId", "propertyName", "address", "latitude", "longitude"],
+  properties: {
+    userId: { type: "string", format: "uuid" },
+    propertyName: { type: "string", example: "2BHK Flat" },
+    address: { type: "string", example: "Indiranagar, Bengaluru" },
+    latitude: { type: "number", example: 12.9716 },
+    longitude: { type: "number", example: 77.5946 }
+  }
+};
+
 export const swaggerDocument = {
   openapi: "3.0.3",
   info: {
@@ -30,18 +42,7 @@ export const swaggerDocument = {
         tags: ["System"],
         responses: {
           "200": {
-            description: "Service health",
-            content: {
-              "application/json": {
-                schema: {
-                  type: "object",
-                  properties: {
-                    status: { type: "string", example: "ok" },
-                    service: { type: "string", example: "api" }
-                  }
-                }
-              }
-            }
+            description: "Service health"
           }
         }
       }
@@ -60,21 +61,145 @@ export const swaggerDocument = {
         },
         responses: {
           "201": {
-            description: "User created",
-            content: {
-              "application/json": {
-                schema: {
-                  type: "object",
-                  properties: {
-                    message: { type: "string", example: "User saved successfully" }
-                  }
-                }
-              }
-            }
+            description: "User created"
           },
-          "500": {
-            description: "Internal server error"
+          "409": {
+            description: "Duplicate user"
           }
+        }
+      }
+    },
+    "/users/{userId}": {
+      get: {
+        summary: "Get user by userId",
+        tags: ["Users"],
+        parameters: [
+          {
+            name: "userId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" }
+          }
+        ],
+        responses: {
+          "200": { description: "User fetched" },
+          "404": { description: "User not found" }
+        }
+      },
+      put: {
+        summary: "Update user",
+        tags: ["Users"],
+        parameters: [
+          {
+            name: "userId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" }
+          }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: userRequestSchema
+            }
+          }
+        },
+        responses: {
+          "200": { description: "User updated" },
+          "404": { description: "User not found" },
+          "409": { description: "Duplicate user" }
+        }
+      }
+    },
+    "/properties": {
+      post: {
+        summary: "Create property",
+        tags: ["Properties"],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: propertyRequestSchema
+            }
+          }
+        },
+        responses: {
+          "201": { description: "Property added" }
+        }
+      },
+      get: {
+        summary: "List properties",
+        tags: ["Properties"],
+        parameters: [
+          {
+            name: "userId",
+            in: "query",
+            required: false,
+            schema: { type: "string", format: "uuid" },
+            description: "Pass userId to get only that user's properties"
+          }
+        ],
+        responses: {
+          "200": { description: "Properties fetched" }
+        }
+      }
+    },
+    "/properties/{propertyId}": {
+      get: {
+        summary: "Get property by propertyId",
+        tags: ["Properties"],
+        parameters: [
+          {
+            name: "propertyId",
+            in: "path",
+            required: true,
+            schema: { type: "string" }
+          }
+        ],
+        responses: {
+          "200": { description: "Property fetched" },
+          "404": { description: "Property not found" }
+        }
+      },
+      put: {
+        summary: "Update property",
+        tags: ["Properties"],
+        parameters: [
+          {
+            name: "propertyId",
+            in: "path",
+            required: true,
+            schema: { type: "string" }
+          }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: propertyRequestSchema
+            }
+          }
+        },
+        responses: {
+          "200": { description: "Property updated" },
+          "404": { description: "Property not found" }
+        }
+      },
+      delete: {
+        summary: "Soft delete property",
+        tags: ["Properties"],
+        parameters: [
+          {
+            name: "propertyId",
+            in: "path",
+            required: true,
+            schema: { type: "string" }
+          }
+        ],
+        responses: {
+          "200": { description: "Property deleted (IsActive = 0)" },
+          "404": { description: "Property not found" }
         }
       }
     }

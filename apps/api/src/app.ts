@@ -6,6 +6,7 @@ import { getSetting } from "@rent/config";
 import { swaggerDocument } from "./swagger";
 import { errorHandler } from "./middlewares/error.middleware";
 import { healthRouter } from "./routes/health.routes";
+import { propertyRouter } from "./routes/property.routes";
 import { userRouter } from "./routes/user.routes";
 
 export function createApp() {
@@ -24,6 +25,7 @@ export function createApp() {
 
   app.use(healthRouter);
   app.use(userRouter);
+  app.use(propertyRouter);
 
   app.use(errorHandler);
 
