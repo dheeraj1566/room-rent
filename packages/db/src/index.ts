@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from "@prisma/client";
+﻿import { Prisma, PrismaClient } from "@prisma/client";
 
 import { getRequiredSetting } from "@rent/config";
 import type { PropertyInput, UserInput } from "@rent/shared";
@@ -68,11 +68,7 @@ function getConflictFields(existing: { userEmail: string; phone: string; aadhaar
 export async function getUserById(userId: string) {
   const db = getDbClient();
 
-<<<<<<< HEAD
   const user = await db.users.findUnique({
-=======
-  const user = await db.Users.findUnique({
->>>>>>> 690f2eb6a173916d79eb7352294287178a80d61e
     where: { userId },
     select: {
       userId: true,
@@ -88,7 +84,6 @@ export async function getUserById(userId: string) {
       createdBy: true,
       updatedAt: true,
       updatedBy: true
-<<<<<<< HEAD
     }
   });
 
@@ -282,19 +277,12 @@ export async function createProperty(property: PropertyInput) {
         INSERT INTO [dbo].[PropertyImages] ([PropertyId], [RoomId], [ImageUrl], [IsPrimary], [CreatedAt])
         VALUES (${propertyId}, ${roomId}, ${imageUrl}, ${index === 0 ? 1 : 0}, GETUTCDATE())
       `;
-=======
->>>>>>> 690f2eb6a173916d79eb7352294287178a80d61e
     }
+
+    return { propertyId, roomId };
   });
-
-  if (!user) {
-    throw new UserNotFoundError(userId);
-  }
-
-  return user;
 }
 
-<<<<<<< HEAD
 export async function listProperties(userId?: string) {
   const db = getDbClient();
 
@@ -314,117 +302,6 @@ export async function listProperties(userId?: string) {
       ORDER BY [CreatedAt] DESC
     `;
   }
-=======
-export async function saveUser(user: UserInput) {
-  const db = getDbClient();
-
-  const existing = await db.Users.findFirst({
-    where: {
-      OR: [{ userEmail: user.userEmail }, { phone: user.phone }, { aadhaarNumber: user.aadhaarNumber }]
-    },
-    select: { userEmail: true, phone: true, aadhaarNumber: true }
-  });
-
-  if (existing) {
-    throw new DuplicateUserError(getConflictFields(existing, user));
-  }
-
-  try {
-    await db.Users.create({
-      data: {
-        userName: user.userName,
-        phone: user.phone,
-        userEmail: user.userEmail,
-        aadhaarNumber: user.aadhaarNumber,
-        localAddress: user.localAddress,
-        hometownAddress: user.hometownAddress,
-        profilePhotoUrl: user.profilePhotoUrl,
-        isActive: true
-      }
-    });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      throw new DuplicateUserError(["email, phone, or aadhaarNumber"]);
-    }
-    throw error;
-  }
-}
-
-export async function updateUser(userId: string, user: UserInput) {
-  const db = getDbClient();
-
-  const existingUser = await db.Users.findUnique({
-    where: { userId },
-    select: { userId: true }
-  });
-
-  if (!existingUser) {
-    throw new UserNotFoundError(userId);
-  }
-
-  const conflictingUser = await db.Users.findFirst({
-    where: {
-      userId: { not: userId },
-      OR: [{ userEmail: user.userEmail }, { phone: user.phone }, { aadhaarNumber: user.aadhaarNumber }]
-    },
-    select: { userEmail: true, phone: true, aadhaarNumber: true }
-  });
-
-  if (conflictingUser) {
-    throw new DuplicateUserError(getConflictFields(conflictingUser, user));
-  }
-
-  try {
-    await db.Users.update({
-      where: { userId },
-      data: {
-        userName: user.userName,
-        phone: user.phone,
-        userEmail: user.userEmail,
-        aadhaarNumber: user.aadhaarNumber,
-        localAddress: user.localAddress,
-        hometownAddress: user.hometownAddress,
-        profilePhotoUrl: user.profilePhotoUrl,
-        isActive: true
-      }
-    });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2002") {
-        throw new DuplicateUserError(["email, phone, or aadhaarNumber"]);
-      }
-      if (error.code === "P2025") {
-        throw new UserNotFoundError(userId);
-      }
-    }
-    throw error;
-  }
-}
-
-type PropertyRecord = {
-  id: string;
-  userId: string;
-  propertyName: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-  isActive: boolean | null;
-  createdAt: Date | null;
-};
-
-export async function createProperty(property: PropertyInput) {
-  const db = getDbClient();
-
-  await db.$executeRaw`
-    INSERT INTO [dbo].[Properties] ([UserId], [PropertyName], [Address], [Latitude], [Longitude], [IsActive], [CreatedAt])
-    VALUES (${property.userId}, ${property.propertyName}, ${property.address}, ${property.latitude}, ${property.longitude}, 1, GETUTCDATE())
-  `;
-}
-
-export async function listProperties(userId?: string) {
-  const db = getDbClient();
-  const filterByUser = userId ? Prisma.sql`AND [UserId] = ${userId}` : Prisma.empty;
->>>>>>> 690f2eb6a173916d79eb7352294287178a80d61e
 
   return db.$queryRaw<PropertyRecord[]>`
     SELECT
@@ -438,10 +315,6 @@ export async function listProperties(userId?: string) {
       [CreatedAt] AS createdAt
     FROM [dbo].[Properties]
     WHERE [IsActive] = 1
-<<<<<<< HEAD
-=======
-    ${filterByUser}
->>>>>>> 690f2eb6a173916d79eb7352294287178a80d61e
     ORDER BY [CreatedAt] DESC
   `;
 }
@@ -504,9 +377,5 @@ export async function softDeleteProperty(propertyId: string) {
   if (affectedRows === 0) {
     throw new PropertyNotFoundError(propertyId);
   }
-<<<<<<< HEAD
 }
 
-=======
-}
->>>>>>> 690f2eb6a173916d79eb7352294287178a80d61e

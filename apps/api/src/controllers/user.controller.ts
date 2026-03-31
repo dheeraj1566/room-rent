@@ -2,7 +2,6 @@ import type { Request, Response, NextFunction } from "express";
 
 import type { UserIdParam, UserInput } from "@rent/shared";
 import { createUserRecord, getUserRecord, updateUserRecord } from "../services/user.service";
-<<<<<<< HEAD
 
 type MinimalUserInput = {
   userName: string;
@@ -25,8 +24,6 @@ function toPersistedUser(input: MinimalUserInput): UserInput {
     profilePhotoUrl: "https://example.com/profile.png"
   };
 }
-=======
->>>>>>> 690f2eb6a173916d79eb7352294287178a80d61e
 
 export async function createUser(req: Request, res: Response, next: NextFunction) {
   try {
@@ -58,11 +55,7 @@ export async function getUser(req: Request, res: Response, next: NextFunction) {
 export async function updateUser(req: Request, res: Response, next: NextFunction) {
   try {
     const { userId } = req.params as UserIdParam;
-<<<<<<< HEAD
     const user = toPersistedUser(req.body as MinimalUserInput);
-=======
-    const user = req.body as UserInput;
->>>>>>> 690f2eb6a173916d79eb7352294287178a80d61e
 
     await updateUserRecord(userId, user);
 
@@ -72,8 +65,4 @@ export async function updateUser(req: Request, res: Response, next: NextFunction
   } catch (error) {
     return next(error);
   }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 690f2eb6a173916d79eb7352294287178a80d61e
