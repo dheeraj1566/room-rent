@@ -299,6 +299,7 @@ export class ListingsService {
   }
 
   /**
+<<<<<<< Updated upstream
    * Returns all active listings with pagination
    */
   static async getAllListings(
@@ -360,5 +361,20 @@ export class ListingsService {
     const items = result.recordset as ListingItem[];
 
     return { items, total };
+=======
+   * Fetch all listings by landlord Id
+   */
+  static async getMyListings(landlordId: string) {
+    const pool = await getPool();
+    const result = await pool.request()
+      .input("LandlordId", sql.UniqueIdentifier, landlordId)
+      .query(`
+        SELECT ListingId, Title, MonthlyRent, StatusId, CreatedAt, AvailableFrom, Colony
+        FROM dbo.Listings
+        WHERE LandlordId = @LandlordId
+        ORDER BY CreatedAt DESC
+      `);
+    return result.recordset;
+>>>>>>> Stashed changes
   }
 }

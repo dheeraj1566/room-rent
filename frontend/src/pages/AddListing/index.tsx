@@ -578,7 +578,7 @@ export default function AddListing() {
           <CheckCircle2 color="#10b981" size={64} style={{ margin: '0 auto 1.5rem' }} />
           <h2>Successfully Published!</h2>
           <p className="mb-4">Your rooms are now active and visible to potential tenants.</p>
-          <button className="btn btn-outline" onClick={() => navigate('/')}>
+          <button className="btn btn-outline" onClick={() => navigate('/home')}>
             Return to Dashboard
           </button>
         </div>

@@ -237,3 +237,22 @@ export const createBulkListings = async (
     next(error);
   }
 };
+
+export const getMyListings = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const landlordId = (req as any).user?.id || req.body.landlordId;
+    if (!landlordId) {
+      res.status(401).json({ error: "Unauthorized / Missing LandlordId" });
+      return;
+    }
+
+    const listings = await ListingsService.getMyListings(landlordId);
+    res.status(200).json({ listings });
+  } catch (error) {
+    next(error);
+  }
+};
