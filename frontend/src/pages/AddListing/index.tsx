@@ -37,7 +37,9 @@ export default function AddListing() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [exteriorPhotoUrl, setExteriorPhotoUrl] = useState('');
+  const [exteriorBlobId, setExteriorBlobId] = useState('');
   const [roomPhotoUrls, setRoomPhotoUrls] = useState<string[]>(['', '']);
+  const [roomBlobIds, setRoomBlobIds] = useState<string[]>(['', '']);
   const [uploadingSlot, setUploadingSlot] = useState<UploadSlot | null>(null);
   
   const [rooms, setRooms] = useState<RoomDetails[]>([
@@ -138,18 +140,20 @@ export default function AddListing() {
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await apiFetch<{ url: string }>('/api/uploads/image', {
+      const response = await apiFetch<{ url: string; blobId: string }>('/api/uploads/image', {
         method: 'POST',
         body: formData,
       });
 
       if (slot === 'exterior') {
         setExteriorPhotoUrl(response.url);
+        setExteriorBlobId(response.blobId);
         return;
       }
 
       const index = slot === 'room-0' ? 0 : 1;
       setRoomPhotoUrls((prev) => prev.map((value, i) => (i === index ? response.url : value)));
+      setRoomBlobIds((prev) => prev.map((value, i) => (i === index ? response.blobId : value)));
     } catch (err: unknown) {
       if (err instanceof ApiError && err.status === 401) {
         navigate('/login');
@@ -181,14 +185,22 @@ export default function AddListing() {
       const payloadRooms = rooms.map(({ id, ...rest }) => rest);
       const photos = [
         ...(exteriorPhotoUrl.trim()
-          ? [{ photoType: 'Exterior', photoUrl: exteriorPhotoUrl.trim() }]
+          ? [
+              {
+                photoType: 'Exterior',
+                photoUrl: exteriorPhotoUrl.trim(),
+                ...(exteriorBlobId ? { blobId: exteriorBlobId } : {}),
+              },
+            ]
           : []),
         ...roomPhotoUrls
-          .filter((url) => url.trim())
+          .map((url, index) => ({ url, index }))
+          .filter(({ url }) => url.trim())
           .slice(0, 2)
-          .map((url, index) => ({
+          .map(({ url, index }) => ({
             photoType: 'Room',
             photoUrl: url.trim(),
+            ...(roomBlobIds[index] ? { blobId: roomBlobIds[index] } : {}),
             displayOrder: index + 1,
           })),
       ];
@@ -475,7 +487,10 @@ export default function AddListing() {
                     type="url"
                     className="input-style"
                     value={exteriorPhotoUrl}
-                    onChange={(e) => setExteriorPhotoUrl(e.target.value)}
+                    onChange={(e) => {
+                      setExteriorPhotoUrl(e.target.value);
+                      setExteriorBlobId('');
+                    }}
                     placeholder="https://example.com/exterior.jpg"
                   />
                   <div className="flex-row">
@@ -516,9 +531,14 @@ export default function AddListing() {
                       className="input-style"
                       value={url}
                       onChange={(e) =>
-                        setRoomPhotoUrls((prev) =>
-                          prev.map((item, i) => (i === index ? e.target.value : item))
-                        )
+                        {
+                          setRoomPhotoUrls((prev) =>
+                            prev.map((item, i) => (i === index ? e.target.value : item))
+                          );
+                          setRoomBlobIds((prev) =>
+                            prev.map((item, i) => (i === index ? '' : item))
+                          );
+                        }
                       }
                       placeholder="https://example.com/room.jpg"
                     />

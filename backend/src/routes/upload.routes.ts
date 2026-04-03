@@ -1,27 +1,12 @@
 import { Router } from "express";
-import path from "node:path";
-import fs from "node:fs";
 import multer from "multer";
 import { requireAuth } from "../middlewares/auth.middleware";
+import { BlobService } from "../services/blob.service.js";
 
 const router = Router();
 
-const uploadDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename: (_req, file, cb) => {
-    const extension = path.extname(file.originalname) || ".jpg";
-    const safeExt = extension.toLowerCase();
-    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${safeExt}`);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (!file.mimetype.startsWith("image/")) {
@@ -32,21 +17,37 @@ const upload = multer({
   },
 });
 
-router.post("/image", requireAuth, upload.single("image"), (req, res) => {
-  if (!req.file) {
-    res.status(400).json({ error: "image file is required" });
+router.post("/image", requireAuth, upload.single("image"), async (req, res) => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: "image file is required" });
+      return;
+    }
+
+    const uploadResult = await BlobService.uploadImage(req.file);
+
+    res.status(201).json({
+      message: "Image uploaded",
+      url: uploadResult.accessUrl,
+      blobUrl: uploadResult.blobUrl,
+      blobId: uploadResult.blobId,
+    });
+  } catch (error: unknown) {
+    const azureLike = error as {
+      statusCode?: number;
+      code?: string;
+      message?: string;
+      details?: { errorCode?: string; message?: string };
+    };
+
+    res.status(502).json({
+      error: "Azure upload failed",
+      azureStatusCode: azureLike.statusCode,
+      azureCode: azureLike.code || azureLike.details?.errorCode,
+      azureMessage: azureLike.details?.message || azureLike.message,
+    });
     return;
   }
-
-  const baseUrl = `${req.protocol}://${req.get("host")}`;
-  const publicUrl = `${baseUrl}/uploads/${req.file.filename}`;
-
-  res.status(201).json({
-    message: "Image uploaded",
-    url: publicUrl,
-    fileName: req.file.filename,
-  });
 });
 
 export default router;
-

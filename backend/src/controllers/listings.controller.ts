@@ -8,10 +8,45 @@ export const getAllListings = async (
   next: NextFunction
 ) => {
   try {
+    const parseNumberList = (value: unknown): number[] | undefined => {
+      if (typeof value !== "string" || value.trim() === "") return undefined;
+      const list = value
+        .split(",")
+        .map((item) => Number(item.trim()))
+        .filter((item) => Number.isFinite(item));
+      return list.length > 0 ? list : undefined;
+    };
+
+    const parseBooleanList = (value: unknown): boolean[] | undefined => {
+      if (typeof value !== "string" || value.trim() === "") return undefined;
+      const list = value
+        .split(",")
+        .map((item) => item.trim().toLowerCase())
+        .filter((item) => item === "true" || item === "false")
+        .map((item) => item === "true");
+      return list.length > 0 ? list : undefined;
+    };
+
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
 
-    const { items, total } = await ListingsService.getAllListings(page, limit);
+    const { items, total } = await ListingsService.getAllListings(page, limit, {
+      search: typeof req.query.search === "string" ? req.query.search : undefined,
+      city: typeof req.query.city === "string" ? req.query.city : undefined,
+      minRent: Number.isFinite(Number(req.query.minRent)) ? Number(req.query.minRent) : undefined,
+      maxRent: Number.isFinite(Number(req.query.maxRent)) ? Number(req.query.maxRent) : undefined,
+      maxOccupants: parseNumberList(req.query.maxOccupants),
+      floorLevelId: parseNumberList(req.query.floorLevelId),
+      furnishingTypeId: parseNumberList(req.query.furnishingTypeId),
+      foodPreferenceId: parseNumberList(req.query.foodPreferenceId),
+      allowSmoking: parseBooleanList(req.query.allowSmoking),
+      sortBy:
+        req.query.sortBy === "rent_asc" ||
+        req.query.sortBy === "rent_desc" ||
+        req.query.sortBy === "newest"
+          ? req.query.sortBy
+          : "newest",
+    });
 
     res.status(200).json({
       page,
@@ -61,6 +96,7 @@ export const createSingleListing = async (
       photos?: {
         photoType?: "Room" | "Exterior";
         photoUrl?: string;
+        blobId?: string;
         displayOrder?: number;
       }[];
     };
@@ -95,7 +131,12 @@ export const createSingleListing = async (
     }
 
     let typedPhotos:
-      | { photoType: "Room" | "Exterior"; photoUrl: string; displayOrder?: number }[]
+      | {
+          photoType: "Room" | "Exterior";
+          photoUrl: string;
+          blobId?: string;
+          displayOrder?: number;
+        }[]
       | undefined;
 
     if (Array.isArray(photos) && photos.length > 0) {
@@ -118,6 +159,7 @@ export const createSingleListing = async (
       typedPhotos = photos.map((p) => ({
         photoType: p.photoType as "Room" | "Exterior",
         photoUrl: p.photoUrl as string,
+        blobId: p.blobId,
         displayOrder: p.displayOrder,
       }));
     }

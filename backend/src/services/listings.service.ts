@@ -1,6 +1,7 @@
 import sql from "mssql";
 import { getPool } from "../config/db";
 import type { ParsedAddress } from "./googleMaps.service";
+import { BlobService, generateReadSasUrl, getBlobUrlFromId } from "./blob.service.js";
 
 export interface CreateListingDto {
   landlordId: string;
@@ -23,6 +24,7 @@ export interface CreateListingDto {
   photos?: {
     photoType: "Room" | "Exterior";
     photoUrl: string;
+    blobId?: string;
     displayOrder?: number;
   }[];
   location: ParsedAddress & { latitude: number; longitude: number };
@@ -55,9 +57,48 @@ export interface ListingItem {
   statusId: number;
   createdAt: string;
   updatedAt: string;
+  coverPhotoUrl: string | null;
+}
+
+export interface ListingFilters {
+  search?: string;
+  city?: string;
+  minRent?: number;
+  maxRent?: number;
+  maxOccupants?: number[];
+  floorLevelId?: number[];
+  furnishingTypeId?: number[];
+  foodPreferenceId?: number[];
+  allowSmoking?: boolean[];
+  sortBy?: "newest" | "rent_asc" | "rent_desc";
 }
 
 export class ListingsService {
+  private static parsePhotoObject(
+    raw: string
+  ): { Exterior?: Array<{ blobId?: string; url?: string }>; Room?: Array<{ blobId?: string; url?: string }> } | null {
+    try {
+      const parsed = JSON.parse(raw) as {
+        Exterior?: Array<{ blobId?: string; url?: string }>;
+        Room?: Array<{ blobId?: string; url?: string }>;
+      };
+      if (typeof parsed !== "object" || parsed === null) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  private static tryExtractBlobId(photoUrl: string): string | null {
+    try {
+      const parsed = new URL(photoUrl);
+      const segments = parsed.pathname.split("/").filter(Boolean);
+      if (segments.length < 2) return null;
+      return segments.slice(1).join("/");
+    } catch {
+      return null;
+    }
+  }
   /**
    * Helper to generate a standardized title
    */
@@ -201,21 +242,67 @@ export class ListingsService {
       const listingId = result.recordset[0].ListingId as string;
 
       if (Array.isArray(data.photos) && data.photos.length > 0) {
+        const photoColumnsResult = await new sql.Request(transaction).query(`
+          SELECT name AS ColumnName
+          FROM sys.columns
+          WHERE object_id = OBJECT_ID('dbo.ListingPhotos')
+        `);
+        const photoColumns = new Set(
+          photoColumnsResult.recordset.map((c: { ColumnName: string }) => c.ColumnName)
+        );
+
+        const blobIdColumn =
+          ["BlobId", "BlobName", "StorageObjectId", "PhotoBlobId", "ExternalId"].find((name) =>
+            photoColumns.has(name)
+          ) || null;
+
+        const groupedPhotos: Record<"Exterior" | "Room", Array<{ blobId?: string; url: string }>> = {
+          Exterior: [],
+          Room: [],
+        };
+
         for (let i = 0; i < data.photos.length; i++) {
           const photo = data.photos[i];
           if (!photo) continue;
+          let finalBlobId = photo.blobId;
+          let finalUrl = photo.photoUrl;
 
-          const photoReq = new sql.Request(transaction);
-          photoReq.input("ListingId", sql.UniqueIdentifier, listingId);
-          photoReq.input("PhotoType", sql.VarChar(10), photo.photoType);
-          photoReq.input("PhotoUrl", sql.VarChar(500), photo.photoUrl);
-          photoReq.input("DisplayOrder", sql.TinyInt, photo.displayOrder ?? i + 1);
+          if (photo.blobId) {
+            const moved = await BlobService.moveBlobToListingFolder(photo.blobId, listingId);
+            finalBlobId = moved.blobId;
+            finalUrl = moved.blobUrl;
+          }
 
-          await photoReq.query(`
-            INSERT INTO dbo.ListingPhotos (ListingId, PhotoType, PhotoUrl, DisplayOrder)
-            VALUES (@ListingId, @PhotoType, @PhotoUrl, @DisplayOrder)
-          `);
+          groupedPhotos[photo.photoType].push({
+            ...(finalBlobId ? { blobId: finalBlobId } : {}),
+            url: finalUrl,
+          });
         }
+
+        const photosJson = JSON.stringify(groupedPhotos);
+        const recordType: "Room" | "Exterior" =
+          groupedPhotos.Exterior.length > 0 ? "Exterior" : "Room";
+
+        const photoReq = new sql.Request(transaction);
+        photoReq.input("ListingId", sql.UniqueIdentifier, listingId);
+        photoReq.input("PhotoType", sql.VarChar(10), recordType);
+        photoReq.input("PhotoUrl", sql.NVarChar(sql.MAX), photosJson);
+        photoReq.input("DisplayOrder", sql.TinyInt, 1);
+
+        const photoInsertColumns = ["ListingId", "PhotoType", "PhotoUrl", "DisplayOrder"];
+        const photoInsertValues = ["@ListingId", "@PhotoType", "@PhotoUrl", "@DisplayOrder"];
+
+        if (blobIdColumn) {
+          const folderBlobId = `listings/${listingId}`;
+          photoReq.input("BlobId", sql.VarChar(300), folderBlobId);
+          photoInsertColumns.push(blobIdColumn);
+          photoInsertValues.push("@BlobId");
+        }
+
+        await photoReq.query(`
+          INSERT INTO dbo.ListingPhotos (${photoInsertColumns.join(", ")})
+          VALUES (${photoInsertValues.join(", ")})
+        `);
       }
 
       await transaction.commit();
@@ -303,22 +390,124 @@ export class ListingsService {
    */
   static async getAllListings(
     page: number,
-    limit: number
+    limit: number,
+    filters: ListingFilters = {}
   ): Promise<{ items: ListingItem[]; total: number }> {
     const pool = await getPool();
     const offset = (page - 1) * limit;
 
-    const totalResult = await pool.request().query(`
+    const whereClauses: string[] = ["l.StatusId = 1"];
+    const sortBy = filters.sortBy ?? "newest";
+
+    if (filters.search && filters.search.trim()) {
+      whereClauses.push("(l.Colony LIKE @Search OR l.City LIKE @Search OR l.State LIKE @Search)");
+    }
+    if (filters.city && filters.city.trim()) {
+      whereClauses.push("l.City = @City");
+    }
+    if (typeof filters.minRent === "number" && Number.isFinite(filters.minRent)) {
+      whereClauses.push("l.MonthlyRent >= @MinRent");
+    }
+    if (typeof filters.maxRent === "number" && Number.isFinite(filters.maxRent)) {
+      whereClauses.push("l.MonthlyRent <= @MaxRent");
+    }
+    const uniqueMaxOccupants = [...new Set((filters.maxOccupants ?? []).filter(Number.isFinite))];
+    const uniqueFloorLevelIds = [...new Set((filters.floorLevelId ?? []).filter(Number.isFinite))];
+    const uniqueFurnishingTypeIds = [
+      ...new Set((filters.furnishingTypeId ?? []).filter(Number.isFinite)),
+    ];
+    const uniqueFoodPreferenceIds = [
+      ...new Set((filters.foodPreferenceId ?? []).filter(Number.isFinite)),
+    ];
+    const uniqueAllowSmoking = [...new Set(filters.allowSmoking ?? [])];
+
+    if (uniqueMaxOccupants.length > 0) {
+      whereClauses.push(
+        `l.MaxOccupants IN (${uniqueMaxOccupants.map((_, idx) => `@MaxOccupants${idx}`).join(", ")})`
+      );
+    }
+    if (uniqueFloorLevelIds.length > 0) {
+      whereClauses.push(
+        `l.FloorLevelId IN (${uniqueFloorLevelIds.map((_, idx) => `@FloorLevelId${idx}`).join(", ")})`
+      );
+    }
+    if (uniqueFurnishingTypeIds.length > 0) {
+      whereClauses.push(
+        `l.FurnishingTypeId IN (${uniqueFurnishingTypeIds
+          .map((_, idx) => `@FurnishingTypeId${idx}`)
+          .join(", ")})`
+      );
+    }
+    if (uniqueFoodPreferenceIds.length > 0) {
+      whereClauses.push(
+        `l.FoodPreferenceId IN (${uniqueFoodPreferenceIds
+          .map((_, idx) => `@FoodPreferenceId${idx}`)
+          .join(", ")})`
+      );
+    }
+    if (uniqueAllowSmoking.length > 0) {
+      whereClauses.push(
+        `l.AllowSmoking IN (${uniqueAllowSmoking.map((_, idx) => `@AllowSmoking${idx}`).join(", ")})`
+      );
+    }
+
+    const applyFilterParams = (request: sql.Request) => {
+      if (filters.search && filters.search.trim()) {
+        request.input("Search", sql.NVarChar(160), `%${filters.search.trim()}%`);
+      }
+
+      if (filters.city && filters.city.trim()) {
+        request.input("City", sql.NVarChar(100), filters.city.trim());
+      }
+
+      if (typeof filters.minRent === "number" && Number.isFinite(filters.minRent)) {
+        request.input("MinRent", sql.Decimal(10, 2), filters.minRent);
+      }
+
+      if (typeof filters.maxRent === "number" && Number.isFinite(filters.maxRent)) {
+        request.input("MaxRent", sql.Decimal(10, 2), filters.maxRent);
+      }
+
+      uniqueMaxOccupants.forEach((value, idx) => {
+        request.input(`MaxOccupants${idx}`, sql.TinyInt, value);
+      });
+      uniqueFloorLevelIds.forEach((value, idx) => {
+        request.input(`FloorLevelId${idx}`, sql.TinyInt, value);
+      });
+      uniqueFurnishingTypeIds.forEach((value, idx) => {
+        request.input(`FurnishingTypeId${idx}`, sql.TinyInt, value);
+      });
+      uniqueFoodPreferenceIds.forEach((value, idx) => {
+        request.input(`FoodPreferenceId${idx}`, sql.TinyInt, value);
+      });
+      uniqueAllowSmoking.forEach((value, idx) => {
+        request.input(`AllowSmoking${idx}`, sql.Bit, value);
+      });
+    };
+
+    const sortClause =
+      sortBy === "rent_asc"
+        ? "l.MonthlyRent ASC"
+        : sortBy === "rent_desc"
+          ? "l.MonthlyRent DESC"
+          : "l.CreatedAt DESC";
+
+    const whereSql = whereClauses.join(" AND ");
+
+    const totalReq = pool.request();
+    applyFilterParams(totalReq);
+    const totalResult = await totalReq.query(`
       SELECT COUNT(1) AS TotalCount
-      FROM dbo.Listings
-      WHERE StatusId = 1
+      FROM dbo.Listings l
+      WHERE ${whereSql}
     `);
 
-    const result = await pool
-      .request()
-      .input("Offset", sql.Int, offset)
-      .input("Limit", sql.Int, limit)
-      .query(`
+    const listReq = pool.request();
+    applyFilterParams(listReq);
+    listReq.input("Offset", sql.Int, offset);
+    listReq.input("Limit", sql.Int, limit);
+
+    const result = await listReq.query(`
         SELECT
           l.ListingId AS listingId,
           l.LandlordId AS landlordId,
@@ -345,19 +534,75 @@ export class ListingsService {
           l.Longitude AS longitude,
           l.StatusId AS statusId,
           l.CreatedAt AS createdAt,
-          l.UpdatedAt AS updatedAt
+          l.UpdatedAt AS updatedAt,
+          p.PhotoUrl AS coverPhotoUrl
         FROM dbo.Listings l
         JOIN dbo.Users u ON u.UserId = l.LandlordId
         JOIN dbo.FloorLevels fl ON fl.FloorLevelId = l.FloorLevelId
         JOIN dbo.FurnishingTypes ft ON ft.FurnishingTypeId = l.FurnishingTypeId
         JOIN dbo.FoodPreferences fp ON fp.FoodPreferenceId = l.FoodPreferenceId
-        WHERE l.StatusId = 1
-        ORDER BY l.CreatedAt DESC
+        OUTER APPLY (
+          SELECT TOP 1 lp.PhotoUrl
+          FROM dbo.ListingPhotos lp
+          WHERE lp.ListingId = l.ListingId
+          ORDER BY
+            CASE WHEN lp.PhotoType = 'Exterior' THEN 0 ELSE 1 END,
+            lp.DisplayOrder ASC,
+            lp.UploadedAt DESC
+        ) p
+        WHERE ${whereSql}
+        ORDER BY ${sortClause}
         OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY
       `);
 
     const total = Number(totalResult.recordset[0]?.TotalCount || 0);
-    const items = result.recordset as ListingItem[];
+    const items = (result.recordset as ListingItem[]).map((item) => {
+      if (!item.coverPhotoUrl) return item;
+      if (item.coverPhotoUrl.includes("sig=")) return item;
+
+      const photoObject = this.parsePhotoObject(item.coverPhotoUrl);
+      if (photoObject) {
+        const preferred =
+          photoObject.Exterior?.[0] ||
+          photoObject.Room?.[0] ||
+          null;
+        if (!preferred) {
+          return {
+            ...item,
+            coverPhotoUrl: null,
+          };
+        }
+        if (preferred.blobId) {
+          try {
+            return {
+              ...item,
+              coverPhotoUrl: generateReadSasUrl(preferred.blobId),
+            };
+          } catch {
+            return {
+              ...item,
+              coverPhotoUrl: preferred.url || null,
+            };
+          }
+        }
+        return {
+          ...item,
+          coverPhotoUrl: preferred.url || null,
+        };
+      }
+
+      const blobId = this.tryExtractBlobId(item.coverPhotoUrl);
+      if (!blobId) return item;
+
+      try {
+        return {
+          ...item,
+          coverPhotoUrl: generateReadSasUrl(blobId),
+        };
+      } catch {
+        return item;
+      }
+    });
 
     return { items, total };
   }

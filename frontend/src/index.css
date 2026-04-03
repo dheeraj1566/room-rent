@@ -218,3 +218,25 @@ p {
 .mt-4 { margin-top: 1rem; }
 .mb-4 { margin-bottom: 1rem; }
 .text-center { text-align: center; }
+
+.listings-layout {
+  display: grid;
+  grid-template-columns: 290px 1fr;
+  gap: 1rem;
+}
+
+.listings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+}
+
+@media (max-width: 960px) {
+  .listings-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .listings-sidebar {
+    position: static !important;
+    max-height: none !important;
+  }
+}

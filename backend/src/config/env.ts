@@ -13,6 +13,16 @@ export const env = {
   // External APIs
   GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY || "",
 
+  // Azure Blob Storage
+  AZURE_STORAGE_ACCOUNT_NAME: process.env.AZURE_STORAGE_ACCOUNT_NAME || "",
+  AZURE_STORAGE_ACCOUNT_KEY: process.env.AZURE_STORAGE_ACCOUNT_KEY || "",
+  AZURE_STORAGE_CONTAINER_NAME: process.env.AZURE_STORAGE_CONTAINER_NAME || "uploads",
+  AZURE_STORAGE_CONNECTION_STRING:
+    process.env.AZURE_STORAGE_CONNECTION_STRING ||
+    (process.env.AZURE_STORAGE_PUBLIC_BASE_URL?.startsWith("DefaultEndpointsProtocol=")
+      ? process.env.AZURE_STORAGE_PUBLIC_BASE_URL
+      : ""),
+
   // Auth
   JWT_SECRET: process.env.JWT_SECRET || "default_development_secret_key_change_in_prod",
 } as const;
