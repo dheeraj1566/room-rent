@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MapPin, Plus, Trash2, Send, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch, ApiError } from '../../lib/api';
+import Navbar from '../../components/Navbar';
 
 interface LocationState {
   latitude: number;
@@ -236,8 +237,22 @@ export default function AddListing() {
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: '3rem' }}>
-      <h1 className="mb-4">Host a new room</h1>
+    <>
+      <Navbar />
+      <div className="add-listing-container">
+        <div className="add-listing-header">
+          <h1>Post Your Property</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '1.0625rem' }}>
+            {step === 1 && "Let's start with your property location"}
+            {step === 2 && "Tell us about your property details"}
+            {step === 3 && "Your property is now live!"}
+          </p>
+          <div className="step-indicator">
+            <div className={`step-dot ${step >= 1 ? 'active' : ''}`}></div>
+            <div className={`step-dot ${step >= 2 ? 'active' : ''}`}></div>
+            <div className={`step-dot ${step >= 3 ? 'active' : ''}`}></div>
+          </div>
+        </div>
       
       {/* STEP 1: LOCATION */}
       {step === 1 && (
@@ -594,15 +609,21 @@ export default function AddListing() {
 
       {/* STEP 3: SUCCESS */}
       {step === 3 && (
-        <div className="glass-card text-center">
-          <CheckCircle2 color="#10b981" size={64} style={{ margin: '0 auto 1.5rem' }} />
-          <h2>Successfully Published!</h2>
-          <p className="mb-4">Your rooms are now active and visible to potential tenants.</p>
-          <button className="btn btn-outline" onClick={() => navigate('/home')}>
-            Return to Dashboard
-          </button>
+        <div className="glass-card text-center" style={{ padding: '3rem 2rem' }}>
+          <CheckCircle2 color="#10b981" size={72} style={{ margin: '0 auto 1.5rem' }} />
+          <h2 style={{ fontSize: '1.75rem', marginBottom: '0.75rem' }}>Successfully Published!</h2>
+          <p className="mb-4" style={{ fontSize: '1.0625rem' }}>Your property is now active and visible to potential tenants.</p>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '2rem' }}>
+            <button className="btn btn-primary" onClick={() => navigate('/listings')}>
+              View All Listings
+            </button>
+            <button className="btn btn-outline" onClick={() => navigate('/profile')}>
+              Go to Profile
+            </button>
+          </div>
         </div>
       )}
     </div>
+    </>
   );
 }

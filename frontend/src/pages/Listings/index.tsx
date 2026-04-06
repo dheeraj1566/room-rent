@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError, apiFetch } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
+import Navbar from "../../components/Navbar";
+import FilterSidebar from "../../components/FilterSidebar";
+import ListingCard from "../../components/ListingCard";
 
 type Listing = {
   listingId: string;
@@ -67,15 +70,8 @@ const parseBooleanList = (value: string | null): boolean[] =>
     .filter((v) => v === "true" || v === "false")
     .map((v) => v === "true");
 
-const toggleNumber = (current: number[], value: number): number[] =>
-  current.includes(value) ? current.filter((item) => item !== value) : [...current, value];
-
-const toggleBoolean = (current: boolean[], value: boolean): boolean[] =>
-  current.includes(value) ? current.filter((item) => item !== value) : [...current, value];
-
 export default function ListingsPage() {
   const [items, setItems] = useState<Listing[]>([]);
-  const [brokenImageIds, setBrokenImageIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [total, setTotal] = useState(0);
@@ -135,7 +131,6 @@ export default function ListingsPage() {
       try {
         const data = await apiFetch<ListingsResponse>(queryPath, { method: "GET" });
         setItems(data.items);
-        setBrokenImageIds(new Set());
         setTotal(data.total);
         setTotalPages(Math.max(1, data.totalPages));
       } catch (error: unknown) {
@@ -177,277 +172,99 @@ export default function ListingsPage() {
     const next = new URLSearchParams(searchParams);
     next.set("page", String(nextPage));
     setSearchParams(next);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
-    <div className="listings-layout" style={{ alignItems: "start" }}>
-      <aside className="glass-card listings-sidebar" style={{ position: "sticky", top: "1rem", maxHeight: "calc(100vh - 2rem)", overflowY: "auto" }}>
-        <h3 style={{ marginBottom: "1rem" }}>Filters</h3>
-
-        <div className="form-group">
-          <label>Search</label>
-          <input
-            className="input-style"
-            value={filters.search}
-            onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-            placeholder="Search locality"
+    <>
+      <Navbar />
+      <div className="listings-container">
+        <div className="listings-layout">
+          <FilterSidebar
+            filters={filters}
+            onFilterChange={setFilters}
+            onApply={applyFilters}
+            onClear={clearFilters}
           />
-        </div>
 
-        <div className="form-group">
-          <label>Budget Range</label>
-          <p>
-            Rs. {filters.minRent.toLocaleString("en-IN")} - Rs.{" "}
-            {filters.maxRent.toLocaleString("en-IN")}
-          </p>
-          <input
-            type="range"
-            min={RENT_MIN}
-            max={RENT_MAX}
-            step={500}
-            value={filters.minRent}
-            onChange={(e) => {
-              const next = Number(e.target.value);
-              setFilters((prev) => ({ ...prev, minRent: Math.min(next, prev.maxRent) }));
-            }}
-          />
-          <input
-            type="range"
-            min={RENT_MIN}
-            max={RENT_MAX}
-            step={500}
-            value={filters.maxRent}
-            onChange={(e) => {
-              const next = Number(e.target.value);
-              setFilters((prev) => ({ ...prev, maxRent: Math.max(next, prev.minRent) }));
-            }}
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Sort</label>
-          <select
-            className="input-style"
-            value={filters.sortBy}
-            onChange={(e) =>
-              setFilters((prev) => ({
-                ...prev,
-                sortBy: e.target.value as "newest" | "rent_asc" | "rent_desc",
-              }))
-            }
-          >
-            <option value="newest">Newest First</option>
-            <option value="rent_asc">Rent: Low to High</option>
-            <option value="rent_desc">Rent: High to Low</option>
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label>Occupants</label>
-          {[1, 2, 3, 4].map((v) => (
-            <label key={v} className="checkbox-group">
-              <input
-                type="checkbox"
-                checked={filters.maxOccupants.includes(v)}
-                onChange={() =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    maxOccupants: toggleNumber(prev.maxOccupants, v),
-                  }))
-                }
-              />
-              {v}
-            </label>
-          ))}
-        </div>
-
-        <div className="form-group">
-          <label>Floor</label>
-          {[
-            { id: 1, name: "Ground Floor" },
-            { id: 2, name: "First Floor" },
-            { id: 3, name: "Second Floor" },
-            { id: 4, name: "Third Floor" },
-            { id: 5, name: "Roof" },
-          ].map((f) => (
-            <label key={f.id} className="checkbox-group">
-              <input
-                type="checkbox"
-                checked={filters.floorLevelId.includes(f.id)}
-                onChange={() =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    floorLevelId: toggleNumber(prev.floorLevelId, f.id),
-                  }))
-                }
-              />
-              {f.name}
-            </label>
-          ))}
-        </div>
-
-        <div className="form-group">
-          <label>Furnishing</label>
-          {[
-            { id: 1, name: "Unfurnished" },
-            { id: 2, name: "Semi-Furnished" },
-            { id: 3, name: "Fully-Furnished" },
-          ].map((f) => (
-            <label key={f.id} className="checkbox-group">
-              <input
-                type="checkbox"
-                checked={filters.furnishingTypeId.includes(f.id)}
-                onChange={() =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    furnishingTypeId: toggleNumber(prev.furnishingTypeId, f.id),
-                  }))
-                }
-              />
-              {f.name}
-            </label>
-          ))}
-        </div>
-
-        <div className="form-group">
-          <label>Food Preference</label>
-          {[
-            { id: 1, name: "Veg Only" },
-            { id: 2, name: "Non-Veg Allowed" },
-            { id: 3, name: "No Restriction" },
-          ].map((f) => (
-            <label key={f.id} className="checkbox-group">
-              <input
-                type="checkbox"
-                checked={filters.foodPreferenceId.includes(f.id)}
-                onChange={() =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    foodPreferenceId: toggleNumber(prev.foodPreferenceId, f.id),
-                  }))
-                }
-              />
-              {f.name}
-            </label>
-          ))}
-        </div>
-
-        <div className="form-group">
-          <label>Smoking</label>
-          {[
-            { value: true, label: "Smoking Allowed" },
-            { value: false, label: "Non-Smoking" },
-          ].map((s) => (
-            <label key={String(s.value)} className="checkbox-group">
-              <input
-                type="checkbox"
-                checked={filters.allowSmoking.includes(s.value)}
-                onChange={() =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    allowSmoking: toggleBoolean(prev.allowSmoking, s.value),
-                  }))
-                }
-              />
-              {s.label}
-            </label>
-          ))}
-        </div>
-
-        <div className="form-group">
-          <label>Bathroom</label>
-          <label className="checkbox-group">
-            <input type="checkbox" disabled />
-            1 Bathroom
-          </label>
-          <label className="checkbox-group">
-            <input type="checkbox" disabled />
-            2+ Bathrooms
-          </label>
-          <p style={{ fontSize: "0.8rem" }}>Coming soon once bathroom column is added in DB.</p>
-        </div>
-
-        <div className="flex-row">
-          <button className="btn btn-primary" onClick={applyFilters}>Apply</button>
-          <button className="btn btn-outline" onClick={clearFilters}>Clear</button>
-        </div>
-      </aside>
-
-      <section className="flex-col" style={{ gap: "0.8rem" }}>
-        <div className="glass-card" style={{ padding: "1rem 1.25rem" }}>
-          <div className="flex-row justify-between">
-            <div>
-              <h2 style={{ marginBottom: "0.25rem" }}>Rental Listings</h2>
-              <p>{loading ? "Loading..." : `${total.toLocaleString("en-IN")} properties found`}</p>
-            </div>
-            <div className="flex-row">
-              <Link to="/add-listing" style={{ textDecoration: "none" }}>
-                <button className="btn btn-primary">Post Property</button>
-              </Link>
-              <button className="btn btn-outline" onClick={logout}>Logout</button>
-            </div>
-          </div>
-        </div>
-
-        {errorMsg && <div className="glass-card text-center" style={{ color: "#ef4444" }}>{errorMsg}</div>}
-        {!loading && !errorMsg && items.length === 0 && (
-          <div className="glass-card text-center">No matching listings found.</div>
-        )}
-
-        <div className="listings-grid" style={{ gap: "0.75rem" }}>
-          {items.map((item) => (
-            <article
-              key={item.listingId}
-              className="glass-card"
-              style={{ padding: "0.75rem", cursor: "pointer" }}
-              role="button"
-              tabIndex={0}
-              onClick={() => navigate(`/listings/${item.listingId}`)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  navigate(`/listings/${item.listingId}`);
-                }
-              }}
-            >
-              <div style={{ width: "100%", aspectRatio: "4 / 3", borderRadius: "10px", overflow: "hidden", marginBottom: "0.6rem", background: "rgba(148,163,184,0.2)" }}>
-                {item.coverPhotoUrl && !brokenImageIds.has(item.listingId) ? (
-                  <img
-                    src={item.coverPhotoUrl}
-                    alt={item.title}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    onError={() =>
-                      setBrokenImageIds((prev) => {
-                        const next = new Set(prev);
-                        next.add(item.listingId);
-                        return next;
-                      })
-                    }
-                  />
-                ) : null}
+          <section>
+            <div className="sort-bar">
+              <div className="sort-bar-count">
+                {loading ? "Loading..." : `${total.toLocaleString("en-IN")} properties found`}
               </div>
-              <h3 style={{ fontSize: "1rem", marginBottom: "0.35rem" }}>
-                Rs. {Number(item.monthlyRent).toLocaleString("en-IN")}
-              </h3>
-              <p style={{ fontSize: "0.88rem", marginBottom: "0.25rem" }}>{item.title}</p>
-              <p style={{ fontSize: "0.82rem", marginBottom: "0.25rem" }}>{item.colony}, {item.city}</p>
-              <p style={{ fontSize: "0.82rem", marginBottom: "0.25rem" }}>
-                {item.maxOccupants} occupants | {item.furnishingName}
-              </p>
-              <p style={{ fontSize: "0.82rem", marginBottom: "0.25rem" }}>
-                {item.foodPreferenceName} | {item.allowSmoking ? "Smoking: Yes" : "Smoking: No"}
-              </p>
-              <p style={{ fontSize: "0.78rem" }}>By {item.landlordName}</p>
-            </article>
-          ))}
-        </div>
+              <select
+                value={filters.sortBy}
+                onChange={(e) => {
+                  const newFilters = {
+                    ...filters,
+                    sortBy: e.target.value as "newest" | "rent_asc" | "rent_desc",
+                  };
+                  setFilters(newFilters);
+                  const next = new URLSearchParams(searchParams);
+                  next.set("sortBy", e.target.value);
+                  next.set("page", "1");
+                  setSearchParams(next);
+                }}
+              >
+                <option value="newest">Newest First</option>
+                <option value="rent_asc">Price: Low to High</option>
+                <option value="rent_desc">Price: High to Low</option>
+              </select>
+            </div>
 
-        <div className="flex-row" style={{ justifyContent: "center", margin: "0.5rem 0 1rem" }}>
-          <button className="btn btn-outline" disabled={page <= 1} onClick={() => changePage(page - 1)}>Previous</button>
-          <span style={{ alignSelf: "center" }}>Page {page} / {totalPages}</span>
-          <button className="btn btn-outline" disabled={page >= totalPages} onClick={() => changePage(page + 1)}>Next</button>
+            {errorMsg && (
+              <div className="glass-card text-center" style={{ color: "#ef4444", marginBottom: '1rem' }}>
+                {errorMsg}
+              </div>
+            )}
+
+            {!loading && !errorMsg && items.length === 0 && (
+              <div className="glass-card text-center">
+                <p style={{ margin: 0 }}>No properties found matching your criteria.</p>
+              </div>
+            )}
+
+            <div className="listings-grid">
+              {items.map((item) => (
+                <ListingCard
+                  key={item.listingId}
+                  listingId={item.listingId}
+                  title={item.title}
+                  colony={item.colony}
+                  city={item.city}
+                  monthlyRent={item.monthlyRent}
+                  maxOccupants={item.maxOccupants}
+                  furnishingName={item.furnishingName}
+                  foodPreferenceName={item.foodPreferenceName}
+                  coverPhotoUrl={item.coverPhotoUrl}
+                />
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="pagination">
+                <button
+                  className="btn btn-outline"
+                  disabled={page <= 1}
+                  onClick={() => changePage(page - 1)}
+                >
+                  Previous
+                </button>
+                <span>
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  className="btn btn-outline"
+                  disabled={page >= totalPages}
+                  onClick={() => changePage(page + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </section>
         </div>
-      </section>
-    </div>
+      </div>
+    </>
   );
 }

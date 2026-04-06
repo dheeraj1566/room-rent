@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "bun run --watch src/index.ts",
-    "start": "bun run src/index.ts"
+    "start": "bun run src/index.ts",
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",

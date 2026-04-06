@@ -14,6 +14,9 @@ export default function Dashboard() {
       </p>
       
       <div className="flex-row" style={{ justifyContent: "center", marginTop: '1rem' }}>
+        <Link to="/profile" style={{ textDecoration: 'none' }}>
+          <button className="btn btn-outline">My Profile</button>
+        </Link>
         <Link to="/add-listing" style={{ textDecoration: 'none' }}>
           <button className="btn btn-primary">
             <PlusCircle size={20} />

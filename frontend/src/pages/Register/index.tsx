@@ -43,77 +43,97 @@ export default function Register() {
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '4rem auto' }}>
-      <div className="glass-card">
-        <h2 className="text-center mb-4">Create Account</h2>
-        
-        {errorMsg && <p style={{ color: '#ef4444', marginBottom: '1rem', textAlign: 'center' }}>{errorMsg}</p>}
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'var(--bg-color)' }}>
+      <div style={{ width: '100%', maxWidth: '420px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem', color: 'var(--brand-primary)' }}>RentHub</h1>
+          <p style={{ color: 'var(--text-muted)' }}>Start your rental journey today</p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="flex-col">
-          <div className="form-group">
-            <label>Full Name</label>
-            <input 
-              type="text" 
-              className="input-style" 
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required 
-            />
+        <div className="glass-card">
+          <h2 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Create Account</h2>
+          
+          {errorMsg && (
+            <div style={{ padding: '0.75rem', background: '#fee', border: '1px solid #fcc', borderRadius: '4px', marginBottom: '1rem' }}>
+              <p style={{ color: '#c33', margin: 0, fontSize: '0.875rem' }}>{errorMsg}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label>Full Name</label>
+              <input 
+                type="text" 
+                className="input-style" 
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="John Doe"
+                required 
+              />
+            </div>
+
+            <div className="form-group">
+              <label>I am signing up as</label>
+              <select
+                className="input-style"
+                value={role}
+                onChange={(e) => setRole(e.target.value as 'Tenant' | 'Landlord')}
+              >
+                <option value="Tenant">Tenant</option>
+                <option value="Landlord">Landlord</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Phone Number</label>
+              <input 
+                type="tel" 
+                className="input-style" 
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+91 98765 43210"
+                required 
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Email Address</label>
+              <input 
+                type="email" 
+                className="input-style" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                required 
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Password</label>
+              <input 
+                type="password" 
+                className="input-style" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Create a strong password"
+                required 
+              />
+            </div>
+
+            <button type="submit" className="btn btn-primary w-full" style={{ marginTop: '1.5rem' }} disabled={loading}>
+              {loading ? 'Creating Account...' : 'Create Account'}
+            </button>
+          </form>
+
+          <div style={{ marginTop: '1.5rem', textAlign: 'center', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
+            <p style={{ margin: 0, fontSize: '0.9375rem' }}>
+              Already have an account?{' '}
+              <Link to="/login" style={{ color: 'var(--brand-secondary)', fontWeight: 600, textDecoration: 'none' }}>
+                Log in
+              </Link>
+            </p>
           </div>
-
-          <div className="form-group">
-            <label>I am signing up as</label>
-            <select
-              className="input-style"
-              value={role}
-              onChange={(e) => setRole(e.target.value as 'Tenant' | 'Landlord')}
-            >
-              <option value="Tenant">Tenant</option>
-              <option value="Landlord">Landlord</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label>Phone Number</label>
-            <input 
-              type="tel" 
-              className="input-style" 
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required 
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Email Address</label>
-            <input 
-              type="email" 
-              className="input-style" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required 
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Password</label>
-            <input 
-              type="password" 
-              className="input-style" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required 
-            />
-          </div>
-
-          <button type="submit" className="btn btn-primary mt-4" disabled={loading}>
-            {loading ? 'Registering...' : 'Create Account'}
-          </button>
-        </form>
-
-        <p className="text-center mt-4">
-          Already have an account? <Link to="/login" style={{ color: 'var(--brand-primary)' }}>Log in here</Link>
-        </p>
+        </div>
       </div>
     </div>
   );
