@@ -75,6 +75,10 @@ export default function AddListing() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        console.log('Fetch My Location coordinates:', {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
         setLocation({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude
