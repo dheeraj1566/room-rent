@@ -915,11 +915,14 @@ p {
 
 .image-preview {
   width: 100%;
-  max-height: 190px;
-  object-fit: cover;
+  height: 220px;
+  object-fit: contain;
+  object-position: center;
+  background: #f8fafc;
   border-radius: 10px;
   margin-top: 0.5rem;
   border: 1px solid var(--border-color);
+  display: block;
 }
 
 .publish-wrap {

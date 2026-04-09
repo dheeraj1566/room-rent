@@ -33,10 +33,18 @@ interface RoomDetails {
   doubleBedCount: number;
 }
 type RoomPayload = Omit<RoomDetails, 'id'>;
+type ListingPhoto = {
+  photoType: 'Exterior' | 'Room';
+  photoUrl: string;
+  blobId?: string;
+  displayOrder?: number;
+};
 
-type UploadSlot = 'exterior' | 'room-0' | 'room-1';
+type UploadSlot = 'exterior' | `room-${number}-${number}`;
 
 const DEFAULT_COORDS = { latitude: 26.9124, longitude: 75.7873 };
+const IMAGES_PER_ROOM = 3;
+const createEmptyRoomImages = () => Array.from({ length: IMAGES_PER_ROOM }, () => '');
 
 export default function AddListing() {
   const navigate = useNavigate();
@@ -49,8 +57,8 @@ export default function AddListing() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [exteriorPhotoUrl, setExteriorPhotoUrl] = useState('');
   const [exteriorBlobId, setExteriorBlobId] = useState('');
-  const [roomPhotoUrls, setRoomPhotoUrls] = useState<string[]>(['', '']);
-  const [roomBlobIds, setRoomBlobIds] = useState<string[]>(['', '']);
+  const [roomPhotoUrls, setRoomPhotoUrls] = useState<string[][]>([createEmptyRoomImages()]);
+  const [roomBlobIds, setRoomBlobIds] = useState<string[][]>([createEmptyRoomImages()]);
   const [uploadingSlot, setUploadingSlot] = useState<UploadSlot | null>(null);
   
   const [rooms, setRooms] = useState<RoomDetails[]>([
@@ -166,11 +174,17 @@ export default function AddListing() {
         doubleBedCount: 0,
       }
     ]);
+    setRoomPhotoUrls((prev) => [...prev, createEmptyRoomImages()]);
+    setRoomBlobIds((prev) => [...prev, createEmptyRoomImages()]);
   };
 
   const handleRemoveRoom = (id: string) => {
     if (rooms.length === 1) return; // Must have at least 1 room
+    const removeIndex = rooms.findIndex((r) => r.id === id);
+    if (removeIndex === -1) return;
     setRooms(rooms.filter(r => r.id !== id));
+    setRoomPhotoUrls((prev) => prev.filter((_, index) => index !== removeIndex));
+    setRoomBlobIds((prev) => prev.filter((_, index) => index !== removeIndex));
   };
 
   const updateRoom = <K extends keyof RoomDetails>(
@@ -180,6 +194,18 @@ export default function AddListing() {
   ) => {
     setRooms(rooms.map(r => r.id === id ? { ...r, [field]: value } : r));
   };
+
+  const digitsOnly = (value: string) => value.replace(/\D/g, '');
+  const toNumberOr = (value: string, fallback: number) => {
+    const sanitized = digitsOnly(value);
+    return sanitized ? parseInt(sanitized, 10) : fallback;
+  };
+  const toBoundedNumber = (
+    value: string,
+    min: number,
+    max: number,
+    fallback: number
+  ) => Math.min(max, Math.max(min, toNumberOr(value, fallback)));
 
   const uploadImageForSlot = async (file: File, slot: UploadSlot) => {
     try {
@@ -199,9 +225,25 @@ export default function AddListing() {
         return;
       }
 
-      const index = slot === 'room-0' ? 0 : 1;
-      setRoomPhotoUrls((prev) => prev.map((value, i) => (i === index ? response.url : value)));
-      setRoomBlobIds((prev) => prev.map((value, i) => (i === index ? response.blobId : value)));
+      const match = /^room-(\d+)-(\d+)$/.exec(slot);
+      if (!match) return;
+      const roomIndex = Number(match[1]);
+      const imageIndex = Number(match[2]);
+      if (!Number.isFinite(roomIndex) || !Number.isFinite(imageIndex)) return;
+      if (roomIndex < 0 || imageIndex < 0 || imageIndex >= IMAGES_PER_ROOM) return;
+
+      setRoomPhotoUrls((prev) =>
+        prev.map((roomImages, i) =>
+          i === roomIndex ? roomImages.map((value, j) => (j === imageIndex ? response.url : value)) : roomImages
+        )
+      );
+      setRoomBlobIds((prev) =>
+        prev.map((roomImages, i) =>
+          i === roomIndex
+            ? roomImages.map((value, j) => (j === imageIndex ? response.blobId : value))
+            : roomImages
+        )
+      );
     } catch (err: unknown) {
       if (err instanceof ApiError && err.status === 401) {
         navigate('/login');
@@ -235,45 +277,66 @@ export default function AddListing() {
         delete roomPayload.id;
         return roomPayload as RoomPayload;
       });
-      const photos = [
-        ...(exteriorPhotoUrl.trim()
-          ? [
-              {
-                photoType: 'Exterior',
-                photoUrl: exteriorPhotoUrl.trim(),
-                ...(exteriorBlobId ? { blobId: exteriorBlobId } : {}),
-              },
-            ]
-          : []),
-        ...roomPhotoUrls
-          .map((url, index) => ({ url, index }))
-          .filter(({ url }) => url.trim())
-          .slice(0, 2)
-          .map(({ url, index }) => ({
-            photoType: 'Room',
-            photoUrl: url.trim(),
-            ...(roomBlobIds[index] ? { blobId: roomBlobIds[index] } : {}),
-            displayOrder: index + 1,
-          })),
-      ];
-      
       const isBulk = payloadRooms.length > 1;
-      const path = `/api/listings${isBulk ? '/bulk' : ''}`;
 
-      if (isBulk && photos.length > 0) {
-        setErrorMsg('Image upload is supported for single listing only. Remove extra rooms or photos.');
-        setIsSubmitting(false);
-        return;
+      const buildPhotosForRoom = (roomIndex: number): ListingPhoto[] => {
+        const photos: ListingPhoto[] = [];
+        if (exteriorPhotoUrl.trim()) {
+          photos.push({
+            photoType: 'Exterior',
+            photoUrl: exteriorPhotoUrl.trim(),
+            ...(exteriorBlobId ? { blobId: exteriorBlobId } : {}),
+          });
+        }
+        const roomImages = roomPhotoUrls[roomIndex] || [];
+        const roomImageBlobIds = roomBlobIds[roomIndex] || [];
+        for (let imageIndex = 0; imageIndex < IMAGES_PER_ROOM; imageIndex += 1) {
+          const roomPhotoUrl = (roomImages[imageIndex] || '').trim();
+          if (!roomPhotoUrl) continue;
+          photos.push({
+            photoType: 'Room',
+            photoUrl: roomPhotoUrl,
+            ...(roomImageBlobIds[imageIndex] ? { blobId: roomImageBlobIds[imageIndex] } : {}),
+            displayOrder: photos.length + 1,
+          });
+        }
+        return photos;
+      };
+
+      if (!isBulk) {
+        await apiFetch('/api/listings', {
+          method: 'POST',
+          body: JSON.stringify({
+            location,
+            address,
+            room: payloadRooms[0],
+            photos: buildPhotosForRoom(0),
+          }),
+        });
+      } else {
+        const hasAnyPhotos =
+          exteriorPhotoUrl.trim().length > 0 ||
+          roomPhotoUrls.some((roomImages) => roomImages.some((url) => url.trim()));
+
+        if (!hasAnyPhotos) {
+          await apiFetch('/api/listings/bulk', {
+            method: 'POST',
+            body: JSON.stringify({ location, address, rooms: payloadRooms }),
+          });
+        } else {
+          for (let index = 0; index < payloadRooms.length; index += 1) {
+            await apiFetch('/api/listings', {
+              method: 'POST',
+              body: JSON.stringify({
+                location,
+                address,
+                room: payloadRooms[index],
+                photos: buildPhotosForRoom(index),
+              }),
+            });
+          }
+        }
       }
-      
-      const body = isBulk 
-        ? { location, address, rooms: payloadRooms }
-        : { location, address, room: payloadRooms[0], photos };
-
-      await apiFetch(path, {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
 
       setStep(3);
     } catch (err: unknown) {
@@ -430,20 +493,32 @@ export default function AddListing() {
                   <div className="form-group">
                     <label>Max Occupants</label>
                     <input 
-                      type="number" min="1" max="4"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       className="input-style"
                       value={room.maxOccupants}
-                      onChange={(e) => updateRoom(room.id, 'maxOccupants', parseInt(e.target.value))}
+                      onChange={(e) =>
+                        updateRoom(
+                          room.id,
+                          'maxOccupants',
+                          toBoundedNumber(e.target.value, 1, 4, 1)
+                        )
+                      }
                     />
                   </div>
 
                   <div className="form-group">
                     <label>Monthly Rent (₹)</label>
                     <input 
-                      type="number" min="0" step="500"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       className="input-style"
                       value={room.monthlyRent}
-                      onChange={(e) => updateRoom(room.id, 'monthlyRent', parseInt(e.target.value))}
+                      onChange={(e) =>
+                        updateRoom(room.id, 'monthlyRent', toNumberOr(e.target.value, 0))
+                      }
                     />
                   </div>
 
@@ -502,20 +577,36 @@ export default function AddListing() {
                   <div className="form-group">
                     <label>Single Bed Count</label>
                     <input
-                      type="number" min="0" max="10"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       className="input-style"
                       value={room.singleBedCount}
-                      onChange={(e) => updateRoom(room.id, 'singleBedCount', parseInt(e.target.value || '0'))}
+                      onChange={(e) =>
+                        updateRoom(
+                          room.id,
+                          'singleBedCount',
+                          toBoundedNumber(e.target.value, 0, 10, 0)
+                        )
+                      }
                     />
                   </div>
 
                   <div className="form-group">
                     <label>Double Bed Count</label>
                     <input
-                      type="number" min="0" max="10"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       className="input-style"
                       value={room.doubleBedCount}
-                      onChange={(e) => updateRoom(room.id, 'doubleBedCount', parseInt(e.target.value || '0'))}
+                      onChange={(e) =>
+                        updateRoom(
+                          room.id,
+                          'doubleBedCount',
+                          toBoundedNumber(e.target.value, 0, 10, 0)
+                        )
+                      }
                     />
                   </div>
 
@@ -532,10 +623,14 @@ export default function AddListing() {
                   <div className="form-group">
                     <label>Security Deposit (₹)</label>
                     <input
-                      type="number" min="0" step="500"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       className="input-style"
                       value={room.securityDeposit}
-                      onChange={(e) => updateRoom(room.id, 'securityDeposit', parseInt(e.target.value || '0'))}
+                      onChange={(e) =>
+                        updateRoom(room.id, 'securityDeposit', toNumberOr(e.target.value, 0))
+                      }
                     />
                   </div>
 
@@ -548,6 +643,79 @@ export default function AddListing() {
                       onChange={(e) => updateRoom(room.id, 'description', e.target.value)}
                       placeholder="Add highlights of this property"
                     />
+                  </div>
+
+                  <div className="form-group room-span-full">
+                    <label>Room Images (up to 3)</label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                      {Array.from({ length: IMAGES_PER_ROOM }, (_, imageIndex) => {
+                        const slot = `room-${index}-${imageIndex}` as UploadSlot;
+                        const imageUrl = roomPhotoUrls[index]?.[imageIndex] || '';
+                        return (
+                          <div
+                            key={slot}
+                            style={{
+                              flex: '1 1 260px',
+                              minWidth: '240px',
+                              maxWidth: '360px',
+                              border: '1px solid var(--border-color)',
+                              borderRadius: '12px',
+                              padding: '0.75rem',
+                              background: 'var(--bg-card)',
+                            }}
+                          >
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                              Image {imageIndex + 1}
+                            </label>
+                            <input
+                              type="url"
+                              className="input-style"
+                              value={imageUrl}
+                              onChange={(e) => {
+                                setRoomPhotoUrls((prev) =>
+                                  prev.map((roomImages, roomIdx) =>
+                                    roomIdx === index
+                                      ? roomImages.map((value, imgIdx) =>
+                                          imgIdx === imageIndex ? e.target.value : value
+                                        )
+                                      : roomImages
+                                  )
+                                );
+                                setRoomBlobIds((prev) =>
+                                  prev.map((roomImages, roomIdx) =>
+                                    roomIdx === index
+                                      ? roomImages.map((value, imgIdx) =>
+                                          imgIdx === imageIndex ? '' : value
+                                        )
+                                      : roomImages
+                                  )
+                                );
+                              }}
+                              placeholder="https://example.com/room.jpg"
+                            />
+                            <div className="flex-row image-upload-actions">
+                              <label className="btn btn-outline image-upload-btn">
+                                Upload File
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => void handleFileInput(e, slot)}
+                                  className="hidden-input"
+                                />
+                              </label>
+                            </div>
+                            {uploadingSlot === slot && <p>Uploading room image...</p>}
+                            {imageUrl.trim() && (
+                              <img
+                                src={imageUrl}
+                                alt={`Room ${index + 1} image ${imageIndex + 1} preview`}
+                                className="image-preview"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div className="form-group room-span-full">
@@ -566,7 +734,7 @@ export default function AddListing() {
 
             <div className="glass-card">
               <h3 className="mb-4">Property Images</h3>
-              <p className="mb-4">Upload from device, capture from camera, or paste image URL.</p>
+              <p className="mb-4">Add an exterior image. Room images are attached inside each room card.</p>
               <div className="flex-col">
                 <div className="form-group">
                   <label>Exterior Image URL</label>
@@ -601,47 +769,6 @@ export default function AddListing() {
                     />
                   )}
                 </div>
-                {roomPhotoUrls.map((url, index) => (
-                  <div key={index} className="form-group">
-                    <label>Room Image URL {index + 1}</label>
-                    <input
-                      type="url"
-                      className="input-style"
-                      value={url}
-                      onChange={(e) =>
-                        {
-                          setRoomPhotoUrls((prev) =>
-                            prev.map((item, i) => (i === index ? e.target.value : item))
-                          );
-                          setRoomBlobIds((prev) =>
-                            prev.map((item, i) => (i === index ? '' : item))
-                          );
-                        }
-                      }
-                      placeholder="https://example.com/room.jpg"
-                    />
-                    <div className="flex-row image-upload-actions">
-                      <label className="btn btn-outline image-upload-btn">
-                        Upload File
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => void handleFileInput(e, index === 0 ? 'room-0' : 'room-1')}
-                          className="hidden-input"
-                        />
-                      </label>
-                    
-                    </div>
-                    {uploadingSlot === (index === 0 ? 'room-0' : 'room-1') && <p>Uploading room image...</p>}
-                    {url.trim() && (
-                      <img
-                        src={url}
-                        alt={`Room ${index + 1} preview`}
-                        className="image-preview"
-                      />
-                    )}
-                  </div>
-                ))}
               </div>
             </div>
 

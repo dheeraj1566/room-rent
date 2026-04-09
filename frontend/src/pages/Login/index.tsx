@@ -156,6 +156,11 @@ export default function Login() {
                 placeholder="Enter your password"
                 required
               />
+              <div style={{ marginTop: '0.5rem', textAlign: 'right' }}>
+                <Link to="/forgot-password" style={{ color: 'var(--brand-secondary)', fontWeight: 600, textDecoration: 'none', fontSize: '0.875rem' }}>
+                  Forgot password?
+                </Link>
+              </div>
             </div>
 
             <button type="submit" className="btn btn-primary w-full" style={{ marginTop: '1.5rem' }} disabled={loading || googleLoading}>

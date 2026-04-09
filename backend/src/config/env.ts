@@ -52,6 +52,10 @@ export const env = {
   GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY || "",
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || "",
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || "",
+  RESEND_API_KEY: process.env.RESEND_API_KEY || "",
+  RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL || "",
+  EMAIL_LOGO_URL: process.env.EMAIL_LOGO_URL || "",
+  BYPASS_RESET_EMAIL: process.env.BYPASS_RESET_EMAIL === "true",
 
   // Azure Blob Storage
   AZURE_STORAGE_ACCOUNT_NAME: process.env.AZURE_STORAGE_ACCOUNT_NAME || "",

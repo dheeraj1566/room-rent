@@ -7,6 +7,8 @@ import ListingsPage from './pages/Listings/index';
 import ListingDetailsPage from './pages/ListingDetails/index';
 import Login from './pages/Login/index';
 import Register from './pages/Register/index';
+import ForgotPassword from './pages/ForgotPassword/index';
+import ResetPassword from './pages/ResetPassword/index';
 import ProfilePage from './pages/Profile/index';
 import Skeleton from './components/Skeleton';
 
@@ -31,6 +33,8 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         
         <Route path="/listings" element={<ProtectedRoute><ListingsPage /></ProtectedRoute>} />
         <Route path="/listings/:listingId" element={<ProtectedRoute><ListingDetailsPage /></ProtectedRoute>} />
