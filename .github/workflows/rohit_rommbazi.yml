@@ -62,5 +62,5 @@ jobs:
           app-name: 'rommbazi'
           slot-name: 'Production'
           package: .
-          startup-command: 'npm start'
+          startup-command: 'node_modules/.bin/tsx src/index.ts'
           
