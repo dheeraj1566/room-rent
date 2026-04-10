@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ApiError, apiFetch } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
 import Navbar from "../../components/Navbar";
 import Skeleton from "../../components/Skeleton";
 
@@ -54,6 +55,8 @@ type EditForm = {
   availableFrom: string;
   description: string;
   securityDeposit: number;
+  exteriorPhotoUrl: string;
+  roomPhotoUrls: string[];
 };
 
 const propertyTypeMap: Record<number, string> = {
@@ -66,6 +69,7 @@ export default function ListingDetailsPage() {
   const { listingId } = useParams();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
+  const { showToast } = useToast();
   const [item, setItem] = useState<ListingDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
@@ -73,6 +77,8 @@ export default function ListingDetailsPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
+  const [editExteriorFile, setEditExteriorFile] = useState<File | null>(null);
+  const [editRoomFiles, setEditRoomFiles] = useState<Array<File | null>>([null, null]);
 
   const loadListing = async () => {
     if (!listingId) {
@@ -87,6 +93,11 @@ export default function ListingDetailsPage() {
       const data = await apiFetch<ListingDetails>(`/api/listings/${listingId}`, { method: "GET" });
       setItem(data);
       setSelectedPhoto(data.coverPhotoUrl || (data.photos[0]?.photoUrl ?? null));
+      const exterior = data.photos.find((photo) => photo.photoType === "Exterior")?.photoUrl || "";
+      const roomUrls = data.photos
+        .filter((photo) => photo.photoType === "Room")
+        .map((photo) => photo.photoUrl)
+        .slice(0, 2);
       setEditForm({
         monthlyRent: Number(data.monthlyRent),
         maxOccupants: Number(data.maxOccupants),
@@ -94,7 +105,11 @@ export default function ListingDetailsPage() {
         availableFrom: String(data.availableFrom).slice(0, 10),
         description: data.description || "",
         securityDeposit: Number(data.securityDeposit || 0),
+        exteriorPhotoUrl: exterior,
+        roomPhotoUrls: [roomUrls[0] || "", roomUrls[1] || ""],
       });
+      setEditExteriorFile(null);
+      setEditRoomFiles([null, null]);
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 401) {
         await logout();
@@ -124,9 +139,10 @@ export default function ListingDetailsPage() {
 
     try {
       const address = `${item.addressLine}, ${item.colony}, ${item.city}, ${item.state}, ${item.pincode}`;
-      await apiFetch<{ message: string }>(`/api/listings/${item.listingId}`, {
-        method: "PUT",
-        body: JSON.stringify({
+      const formData = new FormData();
+      formData.append(
+        "data",
+        JSON.stringify({
           address,
           room: {
             floorLevelId: item.floorLevelId,
@@ -144,9 +160,23 @@ export default function ListingDetailsPage() {
             singleBedCount: item.singleBedCount ?? undefined,
             doubleBedCount: item.doubleBedCount ?? undefined,
           },
-        }),
+          exteriorPhotoUrl: editExteriorFile ? "" : editForm.exteriorPhotoUrl.trim(),
+          roomPhotoUrls: editForm.roomPhotoUrls.map((url, idx) => (editRoomFiles[idx] ? "" : url.trim())),
+        })
+      );
+      if (editExteriorFile) {
+        formData.append("exteriorFile", editExteriorFile);
+      }
+      editRoomFiles.forEach((file, idx) => {
+        if (file) formData.append(`roomFile-${idx}`, file);
+      });
+
+      await apiFetch<{ message: string }>(`/api/listings/${item.listingId}`, {
+        method: "PUT",
+        body: formData,
       });
       setIsEditing(false);
+      showToast("Listing updated successfully", "success");
       await loadListing();
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 401) {
@@ -415,17 +445,34 @@ export default function ListingDetailsPage() {
             zIndex: 999,
           }}
         >
-          <div className="glass-card" style={{ width: "100%", maxWidth: "720px" }}>
+          <div
+            className="glass-card"
+            style={{
+              width: "100%",
+              maxWidth: "720px",
+              maxHeight: "calc(100vh - 2rem)",
+              overflowY: "auto",
+            }}
+          >
             <h3 style={{ marginBottom: "1rem" }}>Edit Property</h3>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
               <div className="form-group">
                 <label>Monthly Rent</label>
                 <input
                   className="input-style"
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={editForm.monthlyRent}
                   onChange={(e) =>
-                    setEditForm((prev) => (prev ? { ...prev, monthlyRent: Number(e.target.value || 0) } : prev))
+                    setEditForm((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            monthlyRent: Number((e.target.value || "").replace(/\D/g, "") || "0"),
+                          }
+                        : prev
+                    )
                   }
                 />
               </div>
@@ -433,10 +480,19 @@ export default function ListingDetailsPage() {
                 <label>Security Deposit</label>
                 <input
                   className="input-style"
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={editForm.securityDeposit}
                   onChange={(e) =>
-                    setEditForm((prev) => (prev ? { ...prev, securityDeposit: Number(e.target.value || 0) } : prev))
+                    setEditForm((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            securityDeposit: Number((e.target.value || "").replace(/\D/g, "") || "0"),
+                          }
+                        : prev
+                    )
                   }
                 />
               </div>
@@ -444,12 +500,22 @@ export default function ListingDetailsPage() {
                 <label>Max Occupants</label>
                 <input
                   className="input-style"
-                  type="number"
-                  min={1}
-                  max={10}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={editForm.maxOccupants}
                   onChange={(e) =>
-                    setEditForm((prev) => (prev ? { ...prev, maxOccupants: Number(e.target.value || 1) } : prev))
+                    setEditForm((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            maxOccupants: Math.min(
+                              10,
+                              Math.max(1, Number((e.target.value || "").replace(/\D/g, "") || "1"))
+                            ),
+                          }
+                        : prev
+                    )
                   }
                 />
               </div>
@@ -486,6 +552,51 @@ export default function ListingDetailsPage() {
                   />
                   Smoking Allowed
                 </label>
+              </div>
+              <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                <label>Exterior Image</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setEditExteriorFile(file);
+                    if (file) {
+                      setEditForm((prev) =>
+                        prev ? { ...prev, exteriorPhotoUrl: URL.createObjectURL(file) } : prev
+                      );
+                    }
+                  }}
+                />
+              </div>
+              <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                <label>Room Images (max 2)</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                  {[0, 1].map((idx) => (
+                    <div key={`edit-room-image-${idx}`} style={{ border: "1px solid var(--border-color)", borderRadius: 8, padding: "0.75rem" }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          setEditRoomFiles((prev) => prev.map((value, i) => (i === idx ? file : value)));
+                          if (file) {
+                            setEditForm((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    roomPhotoUrls: prev.roomPhotoUrls.map((url, i) =>
+                                      i === idx ? URL.createObjectURL(file) : url
+                                    ),
+                                  }
+                                : prev
+                            );
+                          }
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
             <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "1rem" }}>

@@ -35,6 +35,6 @@ router.get("/:listingId", getListingById);
 
 // Single publish request: details + media files together
 router.post("/submit", upload.any(), createListingsWithMedia);
-router.put("/:listingId", updateListing);
+router.put("/:listingId", upload.any(), updateListing);
 
 export default router;

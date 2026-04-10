@@ -531,7 +531,8 @@ export const updateListing = async (
       return;
     }
 
-    const { location: coords, address, room } = req.body as {
+    const rawData = req.body?.data;
+    let payload: {
       location?: { latitude?: number; longitude?: number };
       address?: string;
       room?: {
@@ -550,7 +551,28 @@ export const updateListing = async (
         singleBedCount?: number;
         doubleBedCount?: number;
       };
+      photos?: {
+        photoType?: "Room" | "Exterior";
+        photoUrl?: string;
+        blobId?: string;
+        displayOrder?: number;
+      }[];
+      exteriorPhotoUrl?: string;
+      roomPhotoUrls?: string[];
     };
+
+    if (typeof rawData === "string" && rawData.trim()) {
+      try {
+        payload = JSON.parse(rawData);
+      } catch {
+        res.status(400).json({ error: "Invalid JSON in data payload" });
+        return;
+      }
+    } else {
+      payload = req.body;
+    }
+
+    const { location: coords, address, room, photos, exteriorPhotoUrl, roomPhotoUrls } = payload;
 
     if (!coords && !address) {
       res.status(400).json({ error: "Either Location coordinates or an Address string are required" });
@@ -582,6 +604,89 @@ export const updateListing = async (
       return;
     }
 
+    let typedPhotos:
+      | {
+          photoType: "Room" | "Exterior";
+          photoUrl: string;
+          blobId?: string;
+          displayOrder?: number;
+        }[]
+      | undefined;
+
+    if (Array.isArray(photos)) {
+      typedPhotos = photos
+        .filter((photo) => photo?.photoType && photo?.photoUrl)
+        .map((photo, index) => ({
+          photoType: photo.photoType as "Room" | "Exterior",
+          photoUrl: String(photo.photoUrl),
+          ...(photo.blobId ? { blobId: photo.blobId } : {}),
+          displayOrder: photo.displayOrder ?? index + 1,
+        }));
+    } else {
+      const files = Array.isArray(req.files) ? (req.files as Express.Multer.File[]) : [];
+      const uploadedByField = new Map<string, { url: string; blobId: string }>();
+      for (const file of files) {
+        if (!file?.fieldname) continue;
+        const uploaded = await BlobService.uploadImage(file);
+        uploadedByField.set(file.fieldname, { url: uploaded.accessUrl, blobId: uploaded.blobId });
+      }
+
+      const builtPhotos: {
+        photoType: "Room" | "Exterior";
+        photoUrl: string;
+        blobId?: string;
+        displayOrder?: number;
+      }[] = [];
+
+      const uploadedExterior = uploadedByField.get("exteriorFile");
+      const normalizedExteriorUrl = (exteriorPhotoUrl || "").trim();
+      if (uploadedExterior) {
+        builtPhotos.push({
+          photoType: "Exterior",
+          photoUrl: uploadedExterior.url,
+          blobId: uploadedExterior.blobId,
+        });
+      } else if (normalizedExteriorUrl) {
+        builtPhotos.push({
+          photoType: "Exterior",
+          photoUrl: normalizedExteriorUrl,
+        });
+      }
+
+      const roomUrls = Array.isArray(roomPhotoUrls) ? roomPhotoUrls : [];
+      const roomSlots = Math.max(
+        roomUrls.length,
+        ...[...uploadedByField.keys()]
+          .map((key) => {
+            const match = /^roomFile-(\d+)$/.exec(key);
+            return match ? Number(match[1]) + 1 : 0;
+          })
+          .filter((value) => Number.isFinite(value))
+      );
+
+      for (let idx = 0; idx < roomSlots; idx += 1) {
+        const uploadedRoom = uploadedByField.get(`roomFile-${idx}`);
+        const manualRoomUrl = (roomUrls[idx] || "").trim();
+        if (uploadedRoom) {
+          builtPhotos.push({
+            photoType: "Room",
+            photoUrl: uploadedRoom.url,
+            blobId: uploadedRoom.blobId,
+            displayOrder: builtPhotos.length + 1,
+          });
+          continue;
+        }
+        if (!manualRoomUrl) continue;
+        builtPhotos.push({
+          photoType: "Room",
+          photoUrl: manualRoomUrl,
+          displayOrder: builtPhotos.length + 1,
+        });
+      }
+
+      typedPhotos = builtPhotos;
+    }
+
     const updated = await ListingsService.updateListingById({
       landlordId,
       listingId,
@@ -602,6 +707,7 @@ export const updateListing = async (
         doubleBedCount: room.doubleBedCount,
       },
       location: fullLocation,
+      ...(typedPhotos ? { photos: typedPhotos } : {}),
     });
 
     if (!updated) {
