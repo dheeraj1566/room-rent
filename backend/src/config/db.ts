@@ -67,4 +67,30 @@ export const closePool = async (): Promise<void> => {
   }
 };
 
-export default { getPool, closePool };
+/* Adding a DB wrapper to detect DB Wakes */
+
+let dbWakeCount = 0;
+let lastDbAccessTime: number | null = null;
+
+export async function executeQuery(query: string) {
+  const now = Date.now();
+
+  // Detect DB wake (idle → active)
+  if (!lastDbAccessTime || now - lastDbAccessTime > 2 * 60 * 1000) {
+    dbWakeCount++;
+    console.log("🔥 DB WAKE DETECTED");
+    console.log("🕒 Time:", new Date().toISOString());
+    console.log("📊 Total wakes:", dbWakeCount);
+    console.log("➡️ Route:", (global as any).currentRoute);
+  }
+
+  lastDbAccessTime = now;
+
+  // Log which route triggered it
+  console.log("📡 DB QUERY EXECUTED");
+
+  const pool = await getPool();
+  return pool.request().query(query);
+}
+
+export default { getPool, closePool, executeQuery };

@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import sql from "mssql";
-import db from "../config/db.js";
+import db, { executeQuery } from "../config/db.js";
 
 type UserColumnMap = {
   fullName: string | null;
@@ -62,8 +62,7 @@ const normalizeEmail = (value: string | null): string | null =>
 const resolveUserColumns = async (): Promise<UserColumnMap> => {
   if (resolvedColumnMap) return resolvedColumnMap;
 
-  const pool = await db.getPool();
-  const result = await pool.request().query(`
+  const result = await executeQuery(`
     SELECT COLUMN_NAME AS columnName, DATA_TYPE AS dataType
     FROM INFORMATION_SCHEMA.COLUMNS
     WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'Users'

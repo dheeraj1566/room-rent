@@ -1,5 +1,5 @@
 import sql from "mssql";
-import { getPool } from "../config/db";
+import { executeQuery, getPool } from "../config/db";
 import type { ParsedAddress } from "./googleMaps.service";
 import { BlobService, generateReadSasUrl } from "./blob.service.js";
 
@@ -14,14 +14,13 @@ async function getCachedColumns(tableName: string): Promise<Set<string>> {
   const cached = schemaCache.get(key);
   if (cached) return cached;
 
-  const pool = await getPool();
-  const result = await pool.request().query(`
+  const result = await executeQuery(`
     SELECT name AS ColumnName
     FROM sys.columns
     WHERE object_id = OBJECT_ID('dbo.${tableName}')
   `);
   const columns = new Set(
-    result.recordset.map((c: { ColumnName: string }) => c.ColumnName)
+    result.recordset.map((c: { ColumnName: string }) => c.ColumnName),
   );
   schemaCache.set(key, columns);
   return columns;
@@ -175,7 +174,7 @@ export class ListingsService {
   static async getLocationOptions(): Promise<LocationOption[]> {
     const pool = await getPool();
 
-    const sourceResult = await pool.request().query(`
+    const sourceResult = await executeQuery(`
       SELECT TOP 1
         s.name AS SchemaName,
         t.name AS TableName
@@ -194,16 +193,21 @@ export class ListingsService {
         t.name ASC
     `);
 
-    const source = sourceResult.recordset[0] as { SchemaName?: string; TableName?: string } | undefined;
+    const source = sourceResult.recordset[0] as
+      | { SchemaName?: string; TableName?: string }
+      | undefined;
     if (!source?.SchemaName || !source?.TableName) return [];
 
     const schemaName = source.SchemaName;
     const tableName = source.TableName;
-    if (!/^[A-Za-z0-9_]+$/.test(schemaName) || !/^[A-Za-z0-9_]+$/.test(tableName)) {
+    if (
+      !/^[A-Za-z0-9_]+$/.test(schemaName) ||
+      !/^[A-Za-z0-9_]+$/.test(tableName)
+    ) {
       return [];
     }
 
-    const colsResult = await pool.request().query(`
+    const colsResult = await executeQuery(`
       SELECT c.name AS ColumnName
       FROM sys.columns c
       JOIN sys.tables t ON t.object_id = c.object_id
@@ -211,13 +215,15 @@ export class ListingsService {
       WHERE s.name = '${schemaName}' AND t.name = '${tableName}'
     `);
     const columns = new Set(
-      colsResult.recordset.map((item: { ColumnName: string }) => item.ColumnName)
+      colsResult.recordset.map(
+        (item: { ColumnName: string }) => item.ColumnName,
+      ),
     );
 
     const qualifiedTable = `[${schemaName}].[${tableName}]`;
     const whereClause = columns.has("IsActive") ? "WHERE [IsActive] = 1" : "";
 
-    const rowsResult = await pool.request().query(`
+    const rowsResult = await executeQuery(`
       SELECT [Area], [Colonies]
       FROM ${qualifiedTable}
       ${whereClause}
@@ -226,7 +232,10 @@ export class ListingsService {
 
     const merged = new Map<string, Set<string>>();
 
-    for (const row of rowsResult.recordset as Array<{ Area?: string | null; Colonies?: unknown }>) {
+    for (const row of rowsResult.recordset as Array<{
+      Area?: string | null;
+      Colonies?: unknown;
+    }>) {
       const area = (row.Area || "").trim();
       if (!area) continue;
       const colonies = this.parseColonies(row.Colonies);
@@ -244,8 +253,11 @@ export class ListingsService {
   }
 
   private static parsePhotoObject(
-    raw: string
-  ): { Exterior?: Array<{ blobId?: string; url?: string }>; Room?: Array<{ blobId?: string; url?: string }> } | null {
+    raw: string,
+  ): {
+    Exterior?: Array<{ blobId?: string; url?: string }>;
+    Room?: Array<{ blobId?: string; url?: string }>;
+  } | null {
     try {
       const parsed = JSON.parse(raw) as {
         Exterior?: Array<{ blobId?: string; url?: string }>;
@@ -269,13 +281,16 @@ export class ListingsService {
     }
   }
 
-  private static async resolveCoverPhotoUrl(item: ListingItem): Promise<string | null> {
+  private static async resolveCoverPhotoUrl(
+    item: ListingItem,
+  ): Promise<string | null> {
     if (!item.coverPhotoUrl) return null;
     if (item.coverPhotoUrl.includes("sig=")) return item.coverPhotoUrl;
 
     const photoObject = this.parsePhotoObject(item.coverPhotoUrl);
     if (photoObject) {
-      const preferred = photoObject.Exterior?.[0] || photoObject.Room?.[0] || null;
+      const preferred =
+        photoObject.Exterior?.[0] || photoObject.Room?.[0] || null;
       if (!preferred) return null;
 
       const resolvedBlobId = await BlobService.resolveReadableBlobId({
@@ -339,7 +354,11 @@ export class ListingsService {
 
   private static async parsePhotoRecords(
     listingId: string,
-    records: Array<{ photoType: string | null; photoUrl: string | null; displayOrder: number | null }>
+    records: Array<{
+      photoType: string | null;
+      photoUrl: string | null;
+      displayOrder: number | null;
+    }>,
   ): Promise<ListingPhotoItem[]> {
     const output: ListingPhotoItem[] = [];
 
@@ -396,7 +415,8 @@ export class ListingsService {
     }
 
     output.sort((a, b) => {
-      if (a.photoType !== b.photoType) return a.photoType === "Exterior" ? -1 : 1;
+      if (a.photoType !== b.photoType)
+        return a.photoType === "Exterior" ? -1 : 1;
       return a.displayOrder - b.displayOrder;
     });
 
@@ -405,7 +425,10 @@ export class ListingsService {
   /**
    * Helper to generate a standardized title
    */
-  private static generateTitle(colony: string, furnishingTypeId: number): string {
+  private static generateTitle(
+    colony: string,
+    furnishingTypeId: number,
+  ): string {
     const fnTypeMap: Record<number, string> = {
       1: "Unfurnished",
       2: "Semi-Furnished",
@@ -421,11 +444,14 @@ export class ListingsService {
   static async createSingleListing(data: CreateListingDto): Promise<string> {
     const pool = await getPool();
     const transaction = new sql.Transaction(pool);
-    const title = this.generateTitle(data.location.colony, data.roomDetails.furnishingTypeId);
+    const title = this.generateTitle(
+      data.location.colony,
+      data.roomDetails.furnishingTypeId,
+    );
     await transaction.begin();
 
     try {
-      const listingColumns = await getCachedColumns('Listings');
+      const listingColumns = await getCachedColumns("Listings");
 
       const req = new sql.Request(transaction);
       const insertColumns: string[] = [
@@ -468,11 +494,23 @@ export class ListingsService {
       req.input("LandlordId", sql.UniqueIdentifier, data.landlordId);
       req.input("Title", sql.NVarChar(200), title);
       req.input("FloorLevelId", sql.TinyInt, data.roomDetails.floorLevelId);
-      req.input("FurnishingTypeId", sql.TinyInt, data.roomDetails.furnishingTypeId);
+      req.input(
+        "FurnishingTypeId",
+        sql.TinyInt,
+        data.roomDetails.furnishingTypeId,
+      );
       req.input("MaxOccupants", sql.TinyInt, data.roomDetails.maxOccupants);
       req.input("AllowSmoking", sql.Bit, data.roomDetails.allowSmoking);
-      req.input("FoodPreferenceId", sql.TinyInt, data.roomDetails.foodPreferenceId);
-      req.input("MonthlyRent", sql.Decimal(10, 2), data.roomDetails.monthlyRent);
+      req.input(
+        "FoodPreferenceId",
+        sql.TinyInt,
+        data.roomDetails.foodPreferenceId,
+      );
+      req.input(
+        "MonthlyRent",
+        sql.Decimal(10, 2),
+        data.roomDetails.monthlyRent,
+      );
       req.input("AvailableFrom", sql.Date, data.roomDetails.availableFrom);
       req.input("AddressLine", sql.NVarChar(300), data.location.addressLine);
       req.input("Colony", sql.NVarChar(150), data.location.colony);
@@ -485,7 +523,11 @@ export class ListingsService {
       if (listingColumns.has("Description")) {
         insertColumns.push("Description");
         insertParams.push("@Description");
-        req.input("Description", sql.NVarChar(2000), data.roomDetails.description ?? null);
+        req.input(
+          "Description",
+          sql.NVarChar(2000),
+          data.roomDetails.description ?? null,
+        );
       }
 
       if (listingColumns.has("SecurityDeposit")) {
@@ -494,14 +536,21 @@ export class ListingsService {
         req.input(
           "SecurityDeposit",
           sql.Decimal(10, 2),
-          data.roomDetails.securityDeposit ?? null
+          data.roomDetails.securityDeposit ?? null,
         );
       }
 
-      if (listingColumns.has("PropertyTypeId") && data.roomDetails.propertyTypeId) {
+      if (
+        listingColumns.has("PropertyTypeId") &&
+        data.roomDetails.propertyTypeId
+      ) {
         insertColumns.push("PropertyTypeId");
         insertParams.push("@PropertyTypeId");
-        req.input("PropertyTypeId", sql.TinyInt, data.roomDetails.propertyTypeId);
+        req.input(
+          "PropertyTypeId",
+          sql.TinyInt,
+          data.roomDetails.propertyTypeId,
+        );
       }
 
       if (listingColumns.has("FoodLevelId") && data.roomDetails.foodLevelId) {
@@ -516,16 +565,30 @@ export class ListingsService {
         req.input("BedType", sql.VarChar(20), data.roomDetails.bedType);
       }
 
-      if (listingColumns.has("SingleBedCount") && data.roomDetails.singleBedCount !== undefined) {
+      if (
+        listingColumns.has("SingleBedCount") &&
+        data.roomDetails.singleBedCount !== undefined
+      ) {
         insertColumns.push("SingleBedCount");
         insertParams.push("@SingleBedCount");
-        req.input("SingleBedCount", sql.TinyInt, data.roomDetails.singleBedCount);
+        req.input(
+          "SingleBedCount",
+          sql.TinyInt,
+          data.roomDetails.singleBedCount,
+        );
       }
 
-      if (listingColumns.has("DoubleBedCount") && data.roomDetails.doubleBedCount !== undefined) {
+      if (
+        listingColumns.has("DoubleBedCount") &&
+        data.roomDetails.doubleBedCount !== undefined
+      ) {
         insertColumns.push("DoubleBedCount");
         insertParams.push("@DoubleBedCount");
-        req.input("DoubleBedCount", sql.TinyInt, data.roomDetails.doubleBedCount);
+        req.input(
+          "DoubleBedCount",
+          sql.TinyInt,
+          data.roomDetails.doubleBedCount,
+        );
       }
 
       const insertSql = `
@@ -538,14 +601,21 @@ export class ListingsService {
       const listingId = result.recordset[0].ListingId as string;
 
       if (Array.isArray(data.photos) && data.photos.length > 0) {
-        const photoColumns = await getCachedColumns('ListingPhotos');
+        const photoColumns = await getCachedColumns("ListingPhotos");
 
         const blobIdColumn =
-          ["BlobId", "BlobName", "StorageObjectId", "PhotoBlobId", "ExternalId"].find((name) =>
-            photoColumns.has(name)
-          ) || null;
+          [
+            "BlobId",
+            "BlobName",
+            "StorageObjectId",
+            "PhotoBlobId",
+            "ExternalId",
+          ].find((name) => photoColumns.has(name)) || null;
 
-        const groupedPhotos: Record<"Exterior" | "Room", Array<{ blobId?: string; url: string }>> = {
+        const groupedPhotos: Record<
+          "Exterior" | "Room",
+          Array<{ blobId?: string; url: string }>
+        > = {
           Exterior: [],
           Room: [],
         };
@@ -557,7 +627,10 @@ export class ListingsService {
           let finalUrl = photo.photoUrl;
 
           if (photo.blobId) {
-            const moved = await BlobService.moveBlobToListingFolder(photo.blobId, listingId);
+            const moved = await BlobService.moveBlobToListingFolder(
+              photo.blobId,
+              listingId,
+            );
             finalBlobId = moved.blobId;
             finalUrl = moved.blobUrl;
           }
@@ -578,8 +651,18 @@ export class ListingsService {
         photoReq.input("PhotoUrl", sql.NVarChar(sql.MAX), photosJson);
         photoReq.input("DisplayOrder", sql.TinyInt, 1);
 
-        const photoInsertColumns = ["ListingId", "PhotoType", "PhotoUrl", "DisplayOrder"];
-        const photoInsertValues = ["@ListingId", "@PhotoType", "@PhotoUrl", "@DisplayOrder"];
+        const photoInsertColumns = [
+          "ListingId",
+          "PhotoType",
+          "PhotoUrl",
+          "DisplayOrder",
+        ];
+        const photoInsertValues = [
+          "@ListingId",
+          "@PhotoType",
+          "@PhotoUrl",
+          "@DisplayOrder",
+        ];
 
         if (blobIdColumn) {
           const folderBlobId = `listings/${listingId}`;
@@ -608,15 +691,15 @@ export class ListingsService {
   static async createBulkListings(
     landlordId: string,
     roomsData: CreateListingDto["roomDetails"][],
-    location: CreateListingDto["location"]
+    location: CreateListingDto["location"],
   ): Promise<string[]> {
     const pool = await getPool();
     const transaction = new sql.Transaction(pool);
-    
+
     await transaction.begin();
 
     try {
-      const listingColumns = await getCachedColumns('Listings');
+      const listingColumns = await getCachedColumns("Listings");
 
       const listingIds: string[] = [];
 
@@ -625,9 +708,12 @@ export class ListingsService {
       for (let i = 0; i < roomsData.length; i++) {
         const room = roomsData[i];
         if (!room) continue;
-        const title = this.generateTitle(location.colony, room.furnishingTypeId);
+        const title = this.generateTitle(
+          location.colony,
+          room.furnishingTypeId,
+        );
 
-        // We must re-instantiate request per query to clear params OR use dynamically named params. 
+        // We must re-instantiate request per query to clear params OR use dynamically named params.
         // A fresh request object bound to the same transaction is cleaner.
         const iterReq = new sql.Request(transaction);
 
@@ -640,7 +726,7 @@ export class ListingsService {
         iterReq.input("FoodPreferenceId", sql.TinyInt, room.foodPreferenceId);
         iterReq.input("MonthlyRent", sql.Decimal(10, 2), room.monthlyRent);
         iterReq.input("AvailableFrom", sql.Date, room.availableFrom);
-        
+
         iterReq.input("AddressLine", sql.NVarChar(300), location.addressLine);
         iterReq.input("Colony", sql.NVarChar(150), location.colony);
         iterReq.input("City", sql.NVarChar(100), location.city);
@@ -697,13 +783,12 @@ export class ListingsService {
           OUTPUT INSERTED.ListingId
           VALUES (${insertParams.join(", ")});
         `);
-        
+
         listingIds.push(result.recordset[0].ListingId);
       }
 
       await transaction.commit();
       return listingIds;
-
     } catch (err) {
       await transaction.rollback();
       throw err;
@@ -716,7 +801,10 @@ export class ListingsService {
   static async updateListingById(data: UpdateListingDto): Promise<boolean> {
     const pool = await getPool();
     const transaction = new sql.Transaction(pool);
-    const title = this.generateTitle(data.location.colony, data.roomDetails.furnishingTypeId);
+    const title = this.generateTitle(
+      data.location.colony,
+      data.roomDetails.furnishingTypeId,
+    );
     await transaction.begin();
 
     try {
@@ -726,7 +814,9 @@ export class ListingsService {
         WHERE object_id = OBJECT_ID('dbo.Listings')
       `);
       const listingColumns = new Set(
-        listingColumnsResult.recordset.map((c: { ColumnName: string }) => c.ColumnName)
+        listingColumnsResult.recordset.map(
+          (c: { ColumnName: string }) => c.ColumnName,
+        ),
       );
 
       const req = new sql.Request(transaction);
@@ -734,11 +824,23 @@ export class ListingsService {
       req.input("LandlordId", sql.UniqueIdentifier, data.landlordId);
       req.input("Title", sql.NVarChar(200), title);
       req.input("FloorLevelId", sql.TinyInt, data.roomDetails.floorLevelId);
-      req.input("FurnishingTypeId", sql.TinyInt, data.roomDetails.furnishingTypeId);
+      req.input(
+        "FurnishingTypeId",
+        sql.TinyInt,
+        data.roomDetails.furnishingTypeId,
+      );
       req.input("MaxOccupants", sql.TinyInt, data.roomDetails.maxOccupants);
       req.input("AllowSmoking", sql.Bit, data.roomDetails.allowSmoking);
-      req.input("FoodPreferenceId", sql.TinyInt, data.roomDetails.foodPreferenceId);
-      req.input("MonthlyRent", sql.Decimal(10, 2), data.roomDetails.monthlyRent);
+      req.input(
+        "FoodPreferenceId",
+        sql.TinyInt,
+        data.roomDetails.foodPreferenceId,
+      );
+      req.input(
+        "MonthlyRent",
+        sql.Decimal(10, 2),
+        data.roomDetails.monthlyRent,
+      );
       req.input("AvailableFrom", sql.Date, data.roomDetails.availableFrom);
       req.input("AddressLine", sql.NVarChar(300), data.location.addressLine);
       req.input("Colony", sql.NVarChar(150), data.location.colony);
@@ -768,19 +870,35 @@ export class ListingsService {
 
       if (listingColumns.has("Description")) {
         setClauses.push("Description = @Description");
-        req.input("Description", sql.NVarChar(2000), data.roomDetails.description ?? null);
+        req.input(
+          "Description",
+          sql.NVarChar(2000),
+          data.roomDetails.description ?? null,
+        );
       }
       if (listingColumns.has("SecurityDeposit")) {
         setClauses.push("SecurityDeposit = @SecurityDeposit");
-        req.input("SecurityDeposit", sql.Decimal(10, 2), data.roomDetails.securityDeposit ?? null);
+        req.input(
+          "SecurityDeposit",
+          sql.Decimal(10, 2),
+          data.roomDetails.securityDeposit ?? null,
+        );
       }
       if (listingColumns.has("PropertyTypeId")) {
         setClauses.push("PropertyTypeId = @PropertyTypeId");
-        req.input("PropertyTypeId", sql.TinyInt, data.roomDetails.propertyTypeId ?? null);
+        req.input(
+          "PropertyTypeId",
+          sql.TinyInt,
+          data.roomDetails.propertyTypeId ?? null,
+        );
       }
       if (listingColumns.has("FoodLevelId")) {
         setClauses.push("FoodLevelId = @FoodLevelId");
-        req.input("FoodLevelId", sql.TinyInt, data.roomDetails.foodLevelId ?? null);
+        req.input(
+          "FoodLevelId",
+          sql.TinyInt,
+          data.roomDetails.foodLevelId ?? null,
+        );
       }
       if (listingColumns.has("BedType")) {
         setClauses.push("BedType = @BedType");
@@ -788,11 +906,19 @@ export class ListingsService {
       }
       if (listingColumns.has("SingleBedCount")) {
         setClauses.push("SingleBedCount = @SingleBedCount");
-        req.input("SingleBedCount", sql.TinyInt, data.roomDetails.singleBedCount ?? null);
+        req.input(
+          "SingleBedCount",
+          sql.TinyInt,
+          data.roomDetails.singleBedCount ?? null,
+        );
       }
       if (listingColumns.has("DoubleBedCount")) {
         setClauses.push("DoubleBedCount = @DoubleBedCount");
-        req.input("DoubleBedCount", sql.TinyInt, data.roomDetails.doubleBedCount ?? null);
+        req.input(
+          "DoubleBedCount",
+          sql.TinyInt,
+          data.roomDetails.doubleBedCount ?? null,
+        );
       }
       if (listingColumns.has("UpdatedAt")) {
         setClauses.push("UpdatedAt = SYSUTCDATETIME()");
@@ -818,19 +944,28 @@ export class ListingsService {
           WHERE object_id = OBJECT_ID('dbo.ListingPhotos')
         `);
         const photoColumns = new Set(
-          photoColumnsResult.recordset.map((c: { ColumnName: string }) => c.ColumnName)
+          photoColumnsResult.recordset.map(
+            (c: { ColumnName: string }) => c.ColumnName,
+          ),
         );
         const blobIdColumn =
-          ["BlobId", "BlobName", "StorageObjectId", "PhotoBlobId", "ExternalId"].find((name) =>
-            photoColumns.has(name)
-          ) || null;
+          [
+            "BlobId",
+            "BlobName",
+            "StorageObjectId",
+            "PhotoBlobId",
+            "ExternalId",
+          ].find((name) => photoColumns.has(name)) || null;
 
         await new sql.Request(transaction)
           .input("ListingId", sql.UniqueIdentifier, data.listingId)
           .query(`DELETE FROM dbo.ListingPhotos WHERE ListingId = @ListingId`);
 
         if (data.photos.length > 0) {
-          const groupedPhotos: Record<"Exterior" | "Room", Array<{ blobId?: string; url: string }>> = {
+          const groupedPhotos: Record<
+            "Exterior" | "Room",
+            Array<{ blobId?: string; url: string }>
+          > = {
             Exterior: [],
             Room: [],
           };
@@ -841,7 +976,10 @@ export class ListingsService {
             let finalBlobId = photo.blobId;
             let finalUrl = photo.photoUrl;
             if (photo.blobId) {
-              const moved = await BlobService.moveBlobToListingFolder(photo.blobId, data.listingId);
+              const moved = await BlobService.moveBlobToListingFolder(
+                photo.blobId,
+                data.listingId,
+              );
               finalBlobId = moved.blobId;
               finalUrl = moved.blobUrl;
             }
@@ -861,8 +999,18 @@ export class ListingsService {
           photoReq.input("PhotoUrl", sql.NVarChar(sql.MAX), photosJson);
           photoReq.input("DisplayOrder", sql.TinyInt, 1);
 
-          const photoInsertColumns = ["ListingId", "PhotoType", "PhotoUrl", "DisplayOrder"];
-          const photoInsertValues = ["@ListingId", "@PhotoType", "@PhotoUrl", "@DisplayOrder"];
+          const photoInsertColumns = [
+            "ListingId",
+            "PhotoType",
+            "PhotoUrl",
+            "DisplayOrder",
+          ];
+          const photoInsertValues = [
+            "@ListingId",
+            "@PhotoType",
+            "@PhotoUrl",
+            "@DisplayOrder",
+          ];
 
           if (blobIdColumn) {
             const folderBlobId = `listings/${data.listingId}`;
@@ -892,15 +1040,15 @@ export class ListingsService {
   static async getAllListings(
     page: number,
     limit: number,
-    filters: ListingFilters = {}
+    filters: ListingFilters = {},
   ): Promise<{ items: ListingItem[]; total: number }> {
     const pool = await getPool();
     const offset = (page - 1) * limit;
 
-    const listingsColumns = await getCachedColumns('Listings');
+    const listingsColumns = await getCachedColumns("Listings");
     const hasPropertyTypeId = listingsColumns.has("PropertyTypeId");
 
-    const usersColumns = await getCachedColumns('Users');
+    const usersColumns = await getCachedColumns("Users");
     const hasUserGender = usersColumns.has("Gender");
 
     const whereClauses: string[] = ["l.StatusId = 1"];
@@ -950,7 +1098,7 @@ export class ListingsService {
           OR REPLACE(fl.FloorName, ' ', '') LIKE @SearchCompact${idx}
           OR REPLACE(ft.FurnishingName, ' ', '') LIKE @SearchCompact${idx}
           OR REPLACE(fp.PreferenceName, ' ', '') LIKE @SearchCompact${idx}
-        )`
+        )`,
       );
 
       whereClauses.push(`(${searchTokenClauses.join(" OR ")})`);
@@ -958,14 +1106,24 @@ export class ListingsService {
     if (filters.city && filters.city.trim()) {
       whereClauses.push("l.City = @City");
     }
-    if (typeof filters.minRent === "number" && Number.isFinite(filters.minRent)) {
+    if (
+      typeof filters.minRent === "number" &&
+      Number.isFinite(filters.minRent)
+    ) {
       whereClauses.push("l.MonthlyRent >= @MinRent");
     }
-    if (typeof filters.maxRent === "number" && Number.isFinite(filters.maxRent)) {
+    if (
+      typeof filters.maxRent === "number" &&
+      Number.isFinite(filters.maxRent)
+    ) {
       whereClauses.push("l.MonthlyRent <= @MaxRent");
     }
-    const uniqueMaxOccupants = [...new Set((filters.maxOccupants ?? []).filter(Number.isFinite))];
-    const uniqueFloorLevelIds = [...new Set((filters.floorLevelId ?? []).filter(Number.isFinite))];
+    const uniqueMaxOccupants = [
+      ...new Set((filters.maxOccupants ?? []).filter(Number.isFinite)),
+    ];
+    const uniqueFloorLevelIds = [
+      ...new Set((filters.floorLevelId ?? []).filter(Number.isFinite)),
+    ];
     const uniqueFurnishingTypeIds = [
       ...new Set((filters.furnishingTypeId ?? []).filter(Number.isFinite)),
     ];
@@ -976,7 +1134,9 @@ export class ListingsService {
       ...new Set((filters.propertyTypeId ?? []).filter(Number.isFinite)),
     ];
     const uniqueGender = [
-      ...new Set((filters.gender ?? []).map((item) => item.trim().toLowerCase())),
+      ...new Set(
+        (filters.gender ?? []).map((item) => item.trim().toLowerCase()),
+      ),
     ]
       .filter((item) => item === "male" || item === "female")
       .map((item) => (item === "male" ? "Male" : "Female"));
@@ -984,43 +1144,43 @@ export class ListingsService {
 
     if (uniqueMaxOccupants.length > 0) {
       whereClauses.push(
-        `l.MaxOccupants IN (${uniqueMaxOccupants.map((_, idx) => `@MaxOccupants${idx}`).join(", ")})`
+        `l.MaxOccupants IN (${uniqueMaxOccupants.map((_, idx) => `@MaxOccupants${idx}`).join(", ")})`,
       );
     }
     if (uniqueFloorLevelIds.length > 0) {
       whereClauses.push(
-        `l.FloorLevelId IN (${uniqueFloorLevelIds.map((_, idx) => `@FloorLevelId${idx}`).join(", ")})`
+        `l.FloorLevelId IN (${uniqueFloorLevelIds.map((_, idx) => `@FloorLevelId${idx}`).join(", ")})`,
       );
     }
     if (uniqueFurnishingTypeIds.length > 0) {
       whereClauses.push(
         `l.FurnishingTypeId IN (${uniqueFurnishingTypeIds
           .map((_, idx) => `@FurnishingTypeId${idx}`)
-          .join(", ")})`
+          .join(", ")})`,
       );
     }
     if (uniqueFoodPreferenceIds.length > 0) {
       whereClauses.push(
         `l.FoodPreferenceId IN (${uniqueFoodPreferenceIds
           .map((_, idx) => `@FoodPreferenceId${idx}`)
-          .join(", ")})`
+          .join(", ")})`,
       );
     }
     if (hasPropertyTypeId && uniquePropertyTypeIds.length > 0) {
       whereClauses.push(
         `l.PropertyTypeId IN (${uniquePropertyTypeIds
           .map((_, idx) => `@PropertyTypeId${idx}`)
-          .join(", ")})`
+          .join(", ")})`,
       );
     }
     if (hasUserGender && uniqueGender.length > 0) {
       whereClauses.push(
-        `u.Gender IN (${uniqueGender.map((_, idx) => `@Gender${idx}`).join(", ")})`
+        `u.Gender IN (${uniqueGender.map((_, idx) => `@Gender${idx}`).join(", ")})`,
       );
     }
     if (uniqueAllowSmoking.length > 0) {
       whereClauses.push(
-        `l.AllowSmoking IN (${uniqueAllowSmoking.map((_, idx) => `@AllowSmoking${idx}`).join(", ")})`
+        `l.AllowSmoking IN (${uniqueAllowSmoking.map((_, idx) => `@AllowSmoking${idx}`).join(", ")})`,
       );
     }
     if (filters.landlordId) {
@@ -1030,18 +1190,28 @@ export class ListingsService {
     const applyFilterParams = (request: sql.Request) => {
       searchKeywords.forEach((keyword, idx) => {
         request.input(`Search${idx}`, sql.NVarChar(160), `%${keyword}%`);
-        request.input(`SearchCompact${idx}`, sql.NVarChar(160), `%${keyword.replace(/\s+/g, "")}%`);
+        request.input(
+          `SearchCompact${idx}`,
+          sql.NVarChar(160),
+          `%${keyword.replace(/\s+/g, "")}%`,
+        );
       });
 
       if (filters.city && filters.city.trim()) {
         request.input("City", sql.NVarChar(100), filters.city.trim());
       }
 
-      if (typeof filters.minRent === "number" && Number.isFinite(filters.minRent)) {
+      if (
+        typeof filters.minRent === "number" &&
+        Number.isFinite(filters.minRent)
+      ) {
         request.input("MinRent", sql.Decimal(10, 2), filters.minRent);
       }
 
-      if (typeof filters.maxRent === "number" && Number.isFinite(filters.maxRent)) {
+      if (
+        typeof filters.maxRent === "number" &&
+        Number.isFinite(filters.maxRent)
+      ) {
         request.input("MaxRent", sql.Decimal(10, 2), filters.maxRent);
       }
 
@@ -1156,16 +1326,18 @@ export class ListingsService {
       (result.recordset as ListingItem[]).map(async (item) => ({
         ...item,
         coverPhotoUrl: await this.resolveCoverPhotoUrl(item),
-      }))
+      })),
     );
 
     return { items, total };
   }
 
-  static async getListingById(listingId: string): Promise<ListingDetailsItem | null> {
+  static async getListingById(
+    listingId: string,
+  ): Promise<ListingDetailsItem | null> {
     const pool = await getPool();
 
-    const listingColumns = await getCachedColumns('Listings');
+    const listingColumns = await getCachedColumns("Listings");
 
     const detailsReq = pool.request();
     detailsReq.input("ListingId", sql.UniqueIdentifier, listingId);
@@ -1213,7 +1385,10 @@ export class ListingsService {
 
     if (detailResult.recordset.length === 0) return null;
 
-    const listing = detailResult.recordset[0] as Omit<ListingDetailsItem, "photos" | "coverPhotoUrl"> & {
+    const listing = detailResult.recordset[0] as Omit<
+      ListingDetailsItem,
+      "photos" | "coverPhotoUrl"
+    > & {
       coverPhotoUrl?: string | null;
     };
 
@@ -1234,7 +1409,11 @@ export class ListingsService {
 
     const photos = await this.parsePhotoRecords(
       listingId,
-      photosResult.recordset as Array<{ photoType: string | null; photoUrl: string | null; displayOrder: number | null }>
+      photosResult.recordset as Array<{
+        photoType: string | null;
+        photoUrl: string | null;
+        displayOrder: number | null;
+      }>,
     );
 
     return {

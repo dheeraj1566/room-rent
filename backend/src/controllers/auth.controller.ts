@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 import { Resend } from "resend";
-import db from "../config/db.js";
+import db, { executeQuery } from "../config/db.js";
 import env from "../config/env.js";
 
 type AuthUserRecord = {
@@ -49,8 +49,7 @@ const normalizeGender = (value: unknown): UserGender | null => {
 
 const usersHasGenderColumn = async (): Promise<boolean> => {
   if (usersHasGenderColumnCache !== null) return usersHasGenderColumnCache;
-  const pool = await db.getPool();
-  const result = await pool.request().query(`
+  const result = await executeQuery(`
     SELECT 1 AS found
     FROM INFORMATION_SCHEMA.COLUMNS
     WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'Users' AND COLUMN_NAME = 'Gender'
@@ -70,8 +69,7 @@ const extractSqlMessage = (error: unknown): string => {
 
 const ensurePasswordResetTable = async (): Promise<void> => {
   if (resetTableEnsured) return;
-  const pool = await db.getPool();
-  await pool.request().query(`
+  await executeQuery(`
     IF OBJECT_ID('dbo.PasswordResetRequests', 'U') IS NULL
     BEGIN
       CREATE TABLE dbo.PasswordResetRequests (

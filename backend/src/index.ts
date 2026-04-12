@@ -38,6 +38,12 @@ app.get("/api/docs.json", (_req, res) => {
 });
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+app.use((req, res, next) => {
+  (req as any).startTime = Date.now();
+  (global as any).currentRoute = req.method + " " + req.url;
+  next();
+});
+
 // --------------- Routes ---------------
 app.use("/api", routes);
 
