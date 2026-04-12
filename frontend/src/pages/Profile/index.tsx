@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError, apiFetch } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
 import Navbar from "../../components/Navbar";
-import GoogleLocationPickerMap from "../../components/GoogleLocationPickerMap";
-import { forwardGeocode, reverseGeocode, type Coordinates } from "../../lib/googleMaps";
 import Skeleton from "../../components/Skeleton";
 
 type Profile = {
@@ -38,46 +37,16 @@ const emptyPayload: ProfilePayload = {
   gender: "",
 };
 
-const DEFAULT_COORDINATES: Coordinates = { lat: 26.9124, lng: 75.7873 };
-
-const parseLatLngFromText = (value: string): Coordinates | null => {
-  const match = value.match(
-    /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/
-  );
-  if (!match) return null;
-  const lat = Number(match[1]);
-  const lng = Number(match[2]);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
-  return { lat, lng };
-};
-
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const { showToast } = useToast();
   const [form, setForm] = useState<ProfilePayload>(emptyPayload);
+  const [aadhaarLocked, setAadhaarLocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [locating, setLocating] = useState(false);
-  const [mapCoordinates, setMapCoordinates] = useState<Coordinates>(DEFAULT_COORDINATES);
-  const [resolvingMapLocation, setResolvingMapLocation] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
-
-  const syncMapFromLocationText = useCallback(async (locationText: string) => {
-    const trimmed = locationText.trim();
-    if (!trimmed) return;
-    const parsed = parseLatLngFromText(trimmed);
-    if (parsed) {
-      setMapCoordinates(parsed);
-      return;
-    }
-    const coords = await forwardGeocode(trimmed);
-    if (coords) {
-      setMapCoordinates(coords);
-    }
-  }, []);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -97,7 +66,7 @@ export default function ProfilePage() {
         photo: nextProfile.photo || "",
         gender: nextProfile.gender || "",
       });
-      await syncMapFromLocationText(nextProfile.location || "");
+      setAadhaarLocked(Boolean((nextProfile.aadhaar || "").trim()));
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 401) {
         await logout();
@@ -108,29 +77,36 @@ export default function ProfilePage() {
     } finally {
       setLoading(false);
     }
-  }, [logout, navigate, syncMapFromLocationText]);
+  }, [logout, navigate]);
 
   useEffect(() => {
     void loadProfile();
   }, [loadProfile]);
 
+
   const handleSave = async () => {
     const trimmedAadhaar = form.aadhaar.trim();
+    const trimmedPhone = form.phone.trim();
     if (trimmedAadhaar && !/^\d{12}$/.test(trimmedAadhaar)) {
       setErrorMsg("Aadhaar must be exactly 12 digits");
-      setSuccessMsg("");
+      return;
+    }
+    if (trimmedPhone && !/^\d{10}$/.test(trimmedPhone)) {
+      setErrorMsg("Phone number must be exactly 10 digits");
       return;
     }
 
     setSaving(true);
     setErrorMsg("");
-    setSuccessMsg("");
     try {
       const data = await apiFetch<{ message: string; profile: Profile }>("/api/auth/profile", {
         method: "PUT",
         body: JSON.stringify(form),
       });
-      setSuccessMsg(data.message);
+      if ((data.profile?.aadhaar || "").trim()) {
+        setAadhaarLocked(true);
+      }
+      showToast(data.message || "Profile updated successfully", "success");
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 401) {
         await logout();
@@ -148,7 +124,6 @@ export default function ProfilePage() {
     if (!file) return;
     setUploading(true);
     setErrorMsg("");
-    setSuccessMsg("");
     try {
       const formData = new FormData();
       formData.append("image", file);
@@ -157,6 +132,7 @@ export default function ProfilePage() {
         body: formData,
       });
       setForm((prev) => ({ ...prev, photo: data.url }));
+      showToast("Photo uploaded successfully", "success");
     } catch (error: unknown) {
       setErrorMsg(error instanceof Error ? error.message : "Image upload failed");
     } finally {
@@ -165,61 +141,7 @@ export default function ProfilePage() {
     }
   };
 
-  const updateLocationFromCoordinates = async (coords: Coordinates) => {
-    setMapCoordinates(coords);
-    setResolvingMapLocation(true);
-    setErrorMsg("");
-    try {
-      const exactAddress = await reverseGeocode(coords.lat, coords.lng);
-      setForm((prev) => ({ ...prev, location: exactAddress }));
-    } catch {
-      setForm((prev) => ({
-        ...prev,
-        location: `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`,
-      }));
-    } finally {
-      setResolvingMapLocation(false);
-    }
-  };
-
-  const handleUseCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      setErrorMsg("Geolocation is not supported by your browser");
-      return;
-    }
-
-    setLocating(true);
-    setErrorMsg("");
-    setSuccessMsg("");
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        try {
-          setMapCoordinates({ lat, lng });
-          const exactAddress = await reverseGeocode(lat, lng);
-          setForm((prev) => ({ ...prev, location: exactAddress }));
-        } catch {
-          setForm((prev) => ({ ...prev, location: `${lat.toFixed(6)}, ${lng.toFixed(6)}` }));
-        } finally {
-          setLocating(false);
-        }
-      },
-      () => {
-        setErrorMsg("Unable to fetch current location. Check browser permission.");
-        setLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-  };
-
   const avatarFallback = (form.fullName || form.email || "U").trim().charAt(0).toUpperCase();
-  const locationButtonText = useMemo(() => {
-    if (locating) return "Locating...";
-    if (resolvingMapLocation) return "Updating location...";
-    return "Use current location";
-  }, [locating, resolvingMapLocation]);
 
   if (loading) {
     return (
@@ -273,12 +195,6 @@ export default function ProfilePage() {
           {errorMsg}
         </div>
       )}
-      {successMsg && (
-        <div className="glass-card text-center" style={{ color: "#10b981", marginBottom: "1rem" }}>
-          {successMsg}
-        </div>
-      )}
-
       <div className="glass-card profile-main-card">
         <div className="profile-main-grid">
           <div className="flex-col" style={{ alignItems: "center" }}>
@@ -306,17 +222,6 @@ export default function ProfilePage() {
 
           <div className="profile-form-grid">
             <div className="form-group">
-              <label>Photo URL</label>
-              <input
-                type="url"
-                className="input-style"
-                value={form.photo}
-                onChange={(e) => setForm((prev) => ({ ...prev, photo: e.target.value }))}
-                placeholder="https://example.com/my-photo.jpg"
-              />
-            </div>
-
-            <div className="form-group">
               <label>Full Name</label>
               <input
                 type="text"
@@ -333,7 +238,8 @@ export default function ProfilePage() {
                 type="email"
                 className="input-style"
                 value={form.email}
-                onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+                readOnly
+                disabled
                 placeholder="you@example.com"
               />
             </div>
@@ -356,38 +262,6 @@ export default function ProfilePage() {
               </select>
             </div>
 
-            <div className="form-group profile-location-field">
-              <label>Location</label>
-              <div className="flex-row" style={{ alignItems: "stretch" }}>
-                <input
-                  type="text"
-                  className="input-style"
-                  value={form.location}
-                  onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))}
-                  placeholder="City / Area"
-                />
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={handleUseCurrentLocation}
-                  disabled={locating || resolvingMapLocation}
-                  style={{ whiteSpace: "nowrap" }}
-                >
-                  {locationButtonText}
-                </button>
-              </div>
-              <div className="profile-map-wrap">
-                <GoogleLocationPickerMap
-                  center={mapCoordinates}
-                  onSelect={(coords) => void updateLocationFromCoordinates(coords)}
-                  className="map-preview-frame profile-map-frame"
-                />
-                <p className="profile-map-help">
-                  Click on map or drag the marker to update your location.
-                </p>
-              </div>
-            </div>
-
             <div className="form-group">
               <label>Aadhaar</label>
               <input
@@ -400,9 +274,10 @@ export default function ProfilePage() {
                     aadhaar: e.target.value.replace(/\D/g, "").slice(0, 12),
                   }))
                 }
-                placeholder="12-digit Aadhaar number"
+                placeholder={aadhaarLocked ? "Aadhaar locked after verification" : "12-digit Aadhaar number"}
                 inputMode="numeric"
                 maxLength={12}
+                disabled={aadhaarLocked}
               />
             </div>
 
@@ -412,12 +287,22 @@ export default function ProfilePage() {
                 type="tel"
                 className="input-style"
                 value={form.phone}
-                onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    phone: e.target.value.replace(/\D/g, "").slice(0, 10),
+                  }))
+                }
                 placeholder="Phone number"
+                inputMode="numeric"
+                maxLength={10}
               />
             </div>
 
-            <div className="flex-row" style={{ justifyContent: "space-between" }}>
+            <div
+              className="flex-row"
+              style={{ justifyContent: "space-between", gridColumn: "1 / -1", marginTop: "0.5rem" }}
+            >
               <div className="flex-row">
                 <button
                   className="btn btn-primary"
@@ -427,9 +312,7 @@ export default function ProfilePage() {
                   {saving ? "Updating..." : "Update Profile"}
                 </button>
               </div>
-              <button className="btn btn-outline" onClick={() => void loadProfile()}>
-                Refresh
-              </button>
+           
             </div>
           </div>
         </div>

@@ -859,6 +859,16 @@ p {
   text-align: left;
 }
 
+.location-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.location-fields-grid .form-group:last-child {
+  grid-column: 1 / -1;
+}
+
 .divider-or {
   margin: 2rem 0;
   display: flex;
@@ -976,6 +986,16 @@ p {
 .success-card h2 {
   font-size: 1.75rem;
   margin-bottom: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .location-fields-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .location-fields-grid .form-group:last-child {
+    grid-column: auto;
+  }
 }
 
 .success-card p {
@@ -1101,6 +1121,62 @@ p {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* Toast */
+.toast-stack {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  pointer-events: none;
+}
+
+.toast {
+  min-width: 260px;
+  max-width: min(420px, calc(100vw - 2rem));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-lg);
+  background: var(--bg-card);
+  color: var(--text-main);
+  pointer-events: auto;
+}
+
+.toast-success {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.08), var(--bg-card));
+}
+
+.toast-error {
+  border-color: rgba(239, 68, 68, 0.45);
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.08), var(--bg-card));
+}
+
+.toast-info {
+  border-color: rgba(59, 130, 246, 0.45);
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.08), var(--bg-card));
+}
+
+.toast-close {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.toast-close:hover {
+  color: var(--text-main);
 }
 
 /* Utility Classes */

@@ -163,8 +163,30 @@ const saveProfile = async (
 ): Promise<void> => {
   const columns = await resolveUserColumns();
   const updates: string[] = [];
-  const request = (await db.getPool()).request();
+  const pool = await db.getPool();
+  const request = pool.request();
   request.input("UserId", sql.UniqueIdentifier, userId);
+
+  const immutableSelectParts: string[] = [];
+  if (columns.email) immutableSelectParts.push(`[${columns.email}] AS email`);
+  if (columns.aadhaar) {
+    const aadhaarType = resolvedColumnTypes?.[columns.aadhaar] || "";
+    if (aadhaarType === "varbinary" || aadhaarType === "binary") {
+      immutableSelectParts.push(`CONVERT(varchar(20), [${columns.aadhaar}]) AS aadhaar`);
+    } else {
+      immutableSelectParts.push(`[${columns.aadhaar}] AS aadhaar`);
+    }
+  }
+
+  let existing: { email?: string | null; aadhaar?: string | null } | null = null;
+  if (immutableSelectParts.length > 0) {
+    const existingResult = await pool.request().input("UserId", sql.UniqueIdentifier, userId).query(`
+      SELECT ${immutableSelectParts.join(", ")}
+      FROM dbo.Users
+      WHERE UserId = @UserId
+    `);
+    existing = (existingResult.recordset[0] as { email?: string | null; aadhaar?: string | null } | undefined) ?? null;
+  }
 
   const fullName = trimStringOrNull(payload.fullName);
   if (columns.fullName && fullName !== null) {
@@ -174,8 +196,13 @@ const saveProfile = async (
 
   const email = normalizeEmail(trimStringOrNull(payload.email));
   if (columns.email && email !== null) {
-    updates.push(`[${columns.email}] = @Email`);
-    request.input("Email", sql.VarChar(255), email);
+    const existingEmail = normalizeEmail(trimStringOrNull(existing?.email));
+    if (existingEmail === null) {
+      updates.push(`[${columns.email}] = @Email`);
+      request.input("Email", sql.VarChar(255), email);
+    } else if (email !== existingEmail) {
+      throw new Error("IMMUTABLE_EMAIL");
+    }
   }
 
   const location = trimStringOrNull(payload.location);
@@ -189,6 +216,11 @@ const saveProfile = async (
     throw new Error("VALIDATION_AADHAAR");
   }
   if (hasOwn(payload as object, "aadhaar") && aadhaar !== null) {
+    const existingAadhaar = trimStringOrNull(existing?.aadhaar);
+    if (existingAadhaar !== null && existingAadhaar !== aadhaar) {
+      throw new Error("IMMUTABLE_AADHAAR");
+    }
+
     const aadhaarPlainParam = "AadhaarPlain";
     request.input(aadhaarPlainParam, sql.VarChar(20), aadhaar);
 
@@ -297,6 +329,14 @@ export const createProfile = async (req: Request, res: Response): Promise<void> 
       res.status(400).json({ error: "Gender must be Male or Female" });
       return;
     }
+    if (error instanceof Error && error.message === "IMMUTABLE_EMAIL") {
+      res.status(400).json({ error: "Email cannot be changed" });
+      return;
+    }
+    if (error instanceof Error && error.message === "IMMUTABLE_AADHAAR") {
+      res.status(400).json({ error: "Aadhaar cannot be changed once saved" });
+      return;
+    }
     if (isUniqueConstraintError(error)) {
       res.status(409).json({ error: "Email, phone, or Aadhaar already in use" });
       return;
@@ -323,6 +363,14 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     }
     if (error instanceof Error && error.message === "VALIDATION_GENDER") {
       res.status(400).json({ error: "Gender must be Male or Female" });
+      return;
+    }
+    if (error instanceof Error && error.message === "IMMUTABLE_EMAIL") {
+      res.status(400).json({ error: "Email cannot be changed" });
+      return;
+    }
+    if (error instanceof Error && error.message === "IMMUTABLE_AADHAAR") {
+      res.status(400).json({ error: "Aadhaar cannot be changed once saved" });
       return;
     }
     if (isUniqueConstraintError(error)) {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ApiError, apiFetch } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
 import Navbar from "../../components/Navbar";
 import Skeleton from "../../components/Skeleton";
 
@@ -47,6 +48,17 @@ type ListingDetails = {
   photos: ListingPhoto[];
 };
 
+type EditForm = {
+  monthlyRent: number;
+  maxOccupants: number;
+  allowSmoking: boolean;
+  availableFrom: string;
+  description: string;
+  securityDeposit: number;
+  exteriorPhotoUrl: string;
+  roomPhotoUrls: string[];
+};
+
 const propertyTypeMap: Record<number, string> = {
   1: "PG",
   2: "Individual",
@@ -56,45 +68,127 @@ const propertyTypeMap: Record<number, string> = {
 export default function ListingDetailsPage() {
   const { listingId } = useParams();
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const { showToast } = useToast();
   const [item, setItem] = useState<ListingDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editForm, setEditForm] = useState<EditForm | null>(null);
+  const [editExteriorFile, setEditExteriorFile] = useState<File | null>(null);
+  const [editRoomFiles, setEditRoomFiles] = useState<Array<File | null>>([null, null]);
 
-  useEffect(() => {
-    const load = async () => {
-      if (!listingId) {
-        setErrorMsg("Invalid listing id");
-        setLoading(false);
+  const loadListing = async () => {
+    if (!listingId) {
+      setErrorMsg("Invalid listing id");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg("");
+    try {
+      const data = await apiFetch<ListingDetails>(`/api/listings/${listingId}`, { method: "GET" });
+      setItem(data);
+      setSelectedPhoto(data.coverPhotoUrl || (data.photos[0]?.photoUrl ?? null));
+      const exterior = data.photos.find((photo) => photo.photoType === "Exterior")?.photoUrl || "";
+      const roomUrls = data.photos
+        .filter((photo) => photo.photoType === "Room")
+        .map((photo) => photo.photoUrl)
+        .slice(0, 2);
+      setEditForm({
+        monthlyRent: Number(data.monthlyRent),
+        maxOccupants: Number(data.maxOccupants),
+        allowSmoking: Boolean(data.allowSmoking),
+        availableFrom: String(data.availableFrom).slice(0, 10),
+        description: data.description || "",
+        securityDeposit: Number(data.securityDeposit || 0),
+        exteriorPhotoUrl: exterior,
+        roomPhotoUrls: [roomUrls[0] || "", roomUrls[1] || ""],
+      });
+      setEditExteriorFile(null);
+      setEditRoomFiles([null, null]);
+    } catch (error: unknown) {
+      if (error instanceof ApiError && error.status === 401) {
+        await logout();
+        navigate("/login", { replace: true });
         return;
       }
+      setErrorMsg(error instanceof Error ? error.message : "Failed to load listing");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      setLoading(true);
-      setErrorMsg("");
-      try {
-        const data = await apiFetch<ListingDetails>(`/api/listings/${listingId}`, { method: "GET" });
-        setItem(data);
-        setSelectedPhoto(data.coverPhotoUrl || (data.photos[0]?.photoUrl ?? null));
-      } catch (error: unknown) {
-        if (error instanceof ApiError && error.status === 401) {
-          await logout();
-          navigate("/login", { replace: true });
-          return;
-        }
-        setErrorMsg(error instanceof Error ? error.message : "Failed to load listing");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
+  useEffect(() => {
+    void loadListing();
   }, [listingId, logout, navigate]);
 
   const mapUrl = useMemo(() => {
     if (!item) return "";
     return `https://maps.google.com/maps?q=${item.latitude},${item.longitude}&z=15&output=embed`;
   }, [item]);
+  const canEdit = Boolean(user && item && user.id === item.landlordId);
+
+  const handleSaveEdit = async () => {
+    if (!item || !editForm) return;
+    setIsSavingEdit(true);
+    setErrorMsg("");
+
+    try {
+      const address = `${item.addressLine}, ${item.colony}, ${item.city}, ${item.state}, ${item.pincode}`;
+      const formData = new FormData();
+      formData.append(
+        "data",
+        JSON.stringify({
+          address,
+          room: {
+            floorLevelId: item.floorLevelId,
+            maxOccupants: editForm.maxOccupants,
+            foodPreferenceId: item.foodPreferenceId,
+            allowSmoking: editForm.allowSmoking,
+            monthlyRent: editForm.monthlyRent,
+            furnishingTypeId: item.furnishingTypeId,
+            availableFrom: editForm.availableFrom,
+            description: editForm.description,
+            securityDeposit: editForm.securityDeposit,
+            propertyTypeId: item.propertyTypeId ?? undefined,
+            foodLevelId: item.foodLevelId ?? undefined,
+            bedType: item.bedType ? (item.bedType as "Single" | "Double" | "Mixed") : undefined,
+            singleBedCount: item.singleBedCount ?? undefined,
+            doubleBedCount: item.doubleBedCount ?? undefined,
+          },
+          exteriorPhotoUrl: editExteriorFile ? "" : editForm.exteriorPhotoUrl.trim(),
+          roomPhotoUrls: editForm.roomPhotoUrls.map((url, idx) => (editRoomFiles[idx] ? "" : url.trim())),
+        })
+      );
+      if (editExteriorFile) {
+        formData.append("exteriorFile", editExteriorFile);
+      }
+      editRoomFiles.forEach((file, idx) => {
+        if (file) formData.append(`roomFile-${idx}`, file);
+      });
+
+      await apiFetch<{ message: string }>(`/api/listings/${item.listingId}`, {
+        method: "PUT",
+        body: formData,
+      });
+      setIsEditing(false);
+      showToast("Listing updated successfully", "success");
+      await loadListing();
+    } catch (error: unknown) {
+      if (error instanceof ApiError && error.status === 401) {
+        await logout();
+        navigate("/login", { replace: true });
+        return;
+      }
+      setErrorMsg(error instanceof Error ? error.message : "Failed to update listing");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
 
   return (
     <>
@@ -324,11 +418,198 @@ export default function ListingDetailsPage() {
                 >
                   Back to Listings
                 </button>
+                {canEdit && (
+                  <button
+                    className="btn btn-primary w-full"
+                    style={{ marginTop: '0.75rem' }}
+                    onClick={() => setIsEditing(true)}
+                  >
+                    Edit Property
+                  </button>
+                )}
               </div>
             </div>
           </div>
         )}
       </div>
+      {isEditing && item && editForm && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1rem",
+            zIndex: 999,
+          }}
+        >
+          <div
+            className="glass-card"
+            style={{
+              width: "100%",
+              maxWidth: "720px",
+              maxHeight: "calc(100vh - 2rem)",
+              overflowY: "auto",
+            }}
+          >
+            <h3 style={{ marginBottom: "1rem" }}>Edit Property</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div className="form-group">
+                <label>Monthly Rent</label>
+                <input
+                  className="input-style"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={editForm.monthlyRent}
+                  onChange={(e) =>
+                    setEditForm((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            monthlyRent: Number((e.target.value || "").replace(/\D/g, "") || "0"),
+                          }
+                        : prev
+                    )
+                  }
+                />
+              </div>
+              <div className="form-group">
+                <label>Security Deposit</label>
+                <input
+                  className="input-style"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={editForm.securityDeposit}
+                  onChange={(e) =>
+                    setEditForm((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            securityDeposit: Number((e.target.value || "").replace(/\D/g, "") || "0"),
+                          }
+                        : prev
+                    )
+                  }
+                />
+              </div>
+              <div className="form-group">
+                <label>Max Occupants</label>
+                <input
+                  className="input-style"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={editForm.maxOccupants}
+                  onChange={(e) =>
+                    setEditForm((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            maxOccupants: Math.min(
+                              10,
+                              Math.max(1, Number((e.target.value || "").replace(/\D/g, "") || "1"))
+                            ),
+                          }
+                        : prev
+                    )
+                  }
+                />
+              </div>
+              <div className="form-group">
+                <label>Available From</label>
+                <input
+                  className="input-style"
+                  type="date"
+                  value={editForm.availableFrom}
+                  onChange={(e) =>
+                    setEditForm((prev) => (prev ? { ...prev, availableFrom: e.target.value } : prev))
+                  }
+                />
+              </div>
+              <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                <label>Description</label>
+                <textarea
+                  className="input-style"
+                  rows={4}
+                  value={editForm.description}
+                  onChange={(e) =>
+                    setEditForm((prev) => (prev ? { ...prev, description: e.target.value } : prev))
+                  }
+                />
+              </div>
+              <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                <label className="checkbox-group">
+                  <input
+                    type="checkbox"
+                    checked={editForm.allowSmoking}
+                    onChange={(e) =>
+                      setEditForm((prev) => (prev ? { ...prev, allowSmoking: e.target.checked } : prev))
+                    }
+                  />
+                  Smoking Allowed
+                </label>
+              </div>
+              <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                <label>Exterior Image</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setEditExteriorFile(file);
+                    if (file) {
+                      setEditForm((prev) =>
+                        prev ? { ...prev, exteriorPhotoUrl: URL.createObjectURL(file) } : prev
+                      );
+                    }
+                  }}
+                />
+              </div>
+              <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                <label>Room Images (max 2)</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                  {[0, 1].map((idx) => (
+                    <div key={`edit-room-image-${idx}`} style={{ border: "1px solid var(--border-color)", borderRadius: 8, padding: "0.75rem" }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          setEditRoomFiles((prev) => prev.map((value, i) => (i === idx ? file : value)));
+                          if (file) {
+                            setEditForm((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    roomPhotoUrls: prev.roomPhotoUrls.map((url, i) =>
+                                      i === idx ? URL.createObjectURL(file) : url
+                                    ),
+                                  }
+                                : prev
+                            );
+                          }
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "1rem" }}>
+              <button className="btn btn-outline" onClick={() => setIsEditing(false)} disabled={isSavingEdit}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={() => void handleSaveEdit()} disabled={isSavingEdit}>
+                {isSavingEdit ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

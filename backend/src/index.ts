@@ -53,7 +53,7 @@ const start = async () => {
 
     app.listen(env.PORT, () => {
       console.log(
-        `🚀 Server running on http://localhost:${env.PORT} [${env.NODE_ENV}]`
+        `Server running on http://localhost:${env.PORT} [${env.NODE_ENV}]`
       );
     });
   } catch (error) {

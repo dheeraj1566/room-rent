@@ -54,6 +54,14 @@ export interface CreateListingDto {
   location: ParsedAddress & { latitude: number; longitude: number };
 }
 
+export interface UpdateListingDto {
+  landlordId: string;
+  listingId: string;
+  roomDetails: CreateListingDto["roomDetails"];
+  location: CreateListingDto["location"];
+  photos?: CreateListingDto["photos"];
+}
+
 export interface ListingItem {
   listingId: string;
   landlordId: string;
@@ -117,7 +125,124 @@ export interface ListingFilters {
   landlordId?: string;
 }
 
+export interface LocationOption {
+  area: string;
+  colonies: string[];
+}
+
 export class ListingsService {
+  private static parseColonies(raw: unknown): string[] {
+    if (Array.isArray(raw)) {
+      return raw
+        .map((item) => (typeof item === "string" ? item.trim() : ""))
+        .filter((item) => item.length > 0);
+    }
+
+    if (typeof raw !== "string") return [];
+    const trimmed = raw.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => (typeof item === "string" ? item.trim() : ""))
+          .filter((item) => item.length > 0);
+      }
+    } catch {
+      // ignore
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed.replace(/'/g, '"')) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => (typeof item === "string" ? item.trim() : ""))
+          .filter((item) => item.length > 0);
+      }
+    } catch {
+      // ignore
+    }
+
+    return trimmed
+      .replace(/^\[/, "")
+      .replace(/\]$/, "")
+      .split(",")
+      .map((item) => item.trim().replace(/^['"]|['"]$/g, ""))
+      .filter((item) => item.length > 0);
+  }
+
+  static async getLocationOptions(): Promise<LocationOption[]> {
+    const pool = await getPool();
+
+    const sourceResult = await pool.request().query(`
+      SELECT TOP 1
+        s.name AS SchemaName,
+        t.name AS TableName
+      FROM sys.tables t
+      JOIN sys.schemas s ON s.schema_id = t.schema_id
+      WHERE EXISTS (
+        SELECT 1 FROM sys.columns c
+        WHERE c.object_id = t.object_id AND c.name = 'Area'
+      )
+      AND EXISTS (
+        SELECT 1 FROM sys.columns c
+        WHERE c.object_id = t.object_id AND c.name = 'Colonies'
+      )
+      ORDER BY
+        CASE WHEN t.name IN ('Locations', 'Location', 'LocationMaster', 'LocationMasters') THEN 0 ELSE 1 END,
+        t.name ASC
+    `);
+
+    const source = sourceResult.recordset[0] as { SchemaName?: string; TableName?: string } | undefined;
+    if (!source?.SchemaName || !source?.TableName) return [];
+
+    const schemaName = source.SchemaName;
+    const tableName = source.TableName;
+    if (!/^[A-Za-z0-9_]+$/.test(schemaName) || !/^[A-Za-z0-9_]+$/.test(tableName)) {
+      return [];
+    }
+
+    const colsResult = await pool.request().query(`
+      SELECT c.name AS ColumnName
+      FROM sys.columns c
+      JOIN sys.tables t ON t.object_id = c.object_id
+      JOIN sys.schemas s ON s.schema_id = t.schema_id
+      WHERE s.name = '${schemaName}' AND t.name = '${tableName}'
+    `);
+    const columns = new Set(
+      colsResult.recordset.map((item: { ColumnName: string }) => item.ColumnName)
+    );
+
+    const qualifiedTable = `[${schemaName}].[${tableName}]`;
+    const whereClause = columns.has("IsActive") ? "WHERE [IsActive] = 1" : "";
+
+    const rowsResult = await pool.request().query(`
+      SELECT [Area], [Colonies]
+      FROM ${qualifiedTable}
+      ${whereClause}
+      ORDER BY [Area] ASC
+    `);
+
+    const merged = new Map<string, Set<string>>();
+
+    for (const row of rowsResult.recordset as Array<{ Area?: string | null; Colonies?: unknown }>) {
+      const area = (row.Area || "").trim();
+      if (!area) continue;
+      const colonies = this.parseColonies(row.Colonies);
+      if (!merged.has(area)) merged.set(area, new Set<string>());
+      const current = merged.get(area)!;
+      colonies.forEach((colony) => current.add(colony));
+    }
+
+    return [...merged.entries()]
+      .map(([area, colonies]) => ({
+        area,
+        colonies: [...colonies].sort((a, b) => a.localeCompare(b)),
+      }))
+      .sort((a, b) => a.area.localeCompare(b.area));
+  }
+
   private static parsePhotoObject(
     raw: string
   ): { Exterior?: Array<{ blobId?: string; url?: string }>; Room?: Array<{ blobId?: string; url?: string }> } | null {
@@ -586,6 +711,182 @@ export class ListingsService {
   }
 
   /**
+   * Updates an existing listing owned by the landlord
+   */
+  static async updateListingById(data: UpdateListingDto): Promise<boolean> {
+    const pool = await getPool();
+    const transaction = new sql.Transaction(pool);
+    const title = this.generateTitle(data.location.colony, data.roomDetails.furnishingTypeId);
+    await transaction.begin();
+
+    try {
+      const listingColumnsResult = await new sql.Request(transaction).query(`
+        SELECT name AS ColumnName
+        FROM sys.columns
+        WHERE object_id = OBJECT_ID('dbo.Listings')
+      `);
+      const listingColumns = new Set(
+        listingColumnsResult.recordset.map((c: { ColumnName: string }) => c.ColumnName)
+      );
+
+      const req = new sql.Request(transaction);
+      req.input("ListingId", sql.UniqueIdentifier, data.listingId);
+      req.input("LandlordId", sql.UniqueIdentifier, data.landlordId);
+      req.input("Title", sql.NVarChar(200), title);
+      req.input("FloorLevelId", sql.TinyInt, data.roomDetails.floorLevelId);
+      req.input("FurnishingTypeId", sql.TinyInt, data.roomDetails.furnishingTypeId);
+      req.input("MaxOccupants", sql.TinyInt, data.roomDetails.maxOccupants);
+      req.input("AllowSmoking", sql.Bit, data.roomDetails.allowSmoking);
+      req.input("FoodPreferenceId", sql.TinyInt, data.roomDetails.foodPreferenceId);
+      req.input("MonthlyRent", sql.Decimal(10, 2), data.roomDetails.monthlyRent);
+      req.input("AvailableFrom", sql.Date, data.roomDetails.availableFrom);
+      req.input("AddressLine", sql.NVarChar(300), data.location.addressLine);
+      req.input("Colony", sql.NVarChar(150), data.location.colony);
+      req.input("City", sql.NVarChar(100), data.location.city);
+      req.input("State", sql.NVarChar(100), data.location.state);
+      req.input("Pincode", sql.Char(6), data.location.pincode);
+      req.input("Latitude", sql.Decimal(9, 6), data.location.latitude);
+      req.input("Longitude", sql.Decimal(9, 6), data.location.longitude);
+
+      const setClauses: string[] = [
+        "Title = @Title",
+        "FloorLevelId = @FloorLevelId",
+        "FurnishingTypeId = @FurnishingTypeId",
+        "MaxOccupants = @MaxOccupants",
+        "AllowSmoking = @AllowSmoking",
+        "FoodPreferenceId = @FoodPreferenceId",
+        "MonthlyRent = @MonthlyRent",
+        "AvailableFrom = @AvailableFrom",
+        "AddressLine = @AddressLine",
+        "Colony = @Colony",
+        "City = @City",
+        "State = @State",
+        "Pincode = @Pincode",
+        "Latitude = @Latitude",
+        "Longitude = @Longitude",
+      ];
+
+      if (listingColumns.has("Description")) {
+        setClauses.push("Description = @Description");
+        req.input("Description", sql.NVarChar(2000), data.roomDetails.description ?? null);
+      }
+      if (listingColumns.has("SecurityDeposit")) {
+        setClauses.push("SecurityDeposit = @SecurityDeposit");
+        req.input("SecurityDeposit", sql.Decimal(10, 2), data.roomDetails.securityDeposit ?? null);
+      }
+      if (listingColumns.has("PropertyTypeId")) {
+        setClauses.push("PropertyTypeId = @PropertyTypeId");
+        req.input("PropertyTypeId", sql.TinyInt, data.roomDetails.propertyTypeId ?? null);
+      }
+      if (listingColumns.has("FoodLevelId")) {
+        setClauses.push("FoodLevelId = @FoodLevelId");
+        req.input("FoodLevelId", sql.TinyInt, data.roomDetails.foodLevelId ?? null);
+      }
+      if (listingColumns.has("BedType")) {
+        setClauses.push("BedType = @BedType");
+        req.input("BedType", sql.VarChar(20), data.roomDetails.bedType ?? null);
+      }
+      if (listingColumns.has("SingleBedCount")) {
+        setClauses.push("SingleBedCount = @SingleBedCount");
+        req.input("SingleBedCount", sql.TinyInt, data.roomDetails.singleBedCount ?? null);
+      }
+      if (listingColumns.has("DoubleBedCount")) {
+        setClauses.push("DoubleBedCount = @DoubleBedCount");
+        req.input("DoubleBedCount", sql.TinyInt, data.roomDetails.doubleBedCount ?? null);
+      }
+      if (listingColumns.has("UpdatedAt")) {
+        setClauses.push("UpdatedAt = SYSUTCDATETIME()");
+      }
+
+      const updateSql = `
+        UPDATE dbo.Listings
+        SET ${setClauses.join(", ")}
+        WHERE ListingId = @ListingId AND LandlordId = @LandlordId
+      `;
+
+      const result = await req.query(updateSql);
+      const updated = (result.rowsAffected?.[0] || 0) > 0;
+      if (!updated) {
+        await transaction.rollback();
+        return false;
+      }
+
+      if (Array.isArray(data.photos)) {
+        const photoColumnsResult = await new sql.Request(transaction).query(`
+          SELECT name AS ColumnName
+          FROM sys.columns
+          WHERE object_id = OBJECT_ID('dbo.ListingPhotos')
+        `);
+        const photoColumns = new Set(
+          photoColumnsResult.recordset.map((c: { ColumnName: string }) => c.ColumnName)
+        );
+        const blobIdColumn =
+          ["BlobId", "BlobName", "StorageObjectId", "PhotoBlobId", "ExternalId"].find((name) =>
+            photoColumns.has(name)
+          ) || null;
+
+        await new sql.Request(transaction)
+          .input("ListingId", sql.UniqueIdentifier, data.listingId)
+          .query(`DELETE FROM dbo.ListingPhotos WHERE ListingId = @ListingId`);
+
+        if (data.photos.length > 0) {
+          const groupedPhotos: Record<"Exterior" | "Room", Array<{ blobId?: string; url: string }>> = {
+            Exterior: [],
+            Room: [],
+          };
+
+          for (let i = 0; i < data.photos.length; i++) {
+            const photo = data.photos[i];
+            if (!photo) continue;
+            let finalBlobId = photo.blobId;
+            let finalUrl = photo.photoUrl;
+            if (photo.blobId) {
+              const moved = await BlobService.moveBlobToListingFolder(photo.blobId, data.listingId);
+              finalBlobId = moved.blobId;
+              finalUrl = moved.blobUrl;
+            }
+            groupedPhotos[photo.photoType].push({
+              ...(finalBlobId ? { blobId: finalBlobId } : {}),
+              url: finalUrl,
+            });
+          }
+
+          const photosJson = JSON.stringify(groupedPhotos);
+          const recordType: "Room" | "Exterior" =
+            groupedPhotos.Exterior.length > 0 ? "Exterior" : "Room";
+
+          const photoReq = new sql.Request(transaction);
+          photoReq.input("ListingId", sql.UniqueIdentifier, data.listingId);
+          photoReq.input("PhotoType", sql.VarChar(10), recordType);
+          photoReq.input("PhotoUrl", sql.NVarChar(sql.MAX), photosJson);
+          photoReq.input("DisplayOrder", sql.TinyInt, 1);
+
+          const photoInsertColumns = ["ListingId", "PhotoType", "PhotoUrl", "DisplayOrder"];
+          const photoInsertValues = ["@ListingId", "@PhotoType", "@PhotoUrl", "@DisplayOrder"];
+
+          if (blobIdColumn) {
+            const folderBlobId = `listings/${data.listingId}`;
+            photoReq.input("BlobId", sql.VarChar(300), folderBlobId);
+            photoInsertColumns.push(blobIdColumn);
+            photoInsertValues.push("@BlobId");
+          }
+
+          await photoReq.query(`
+            INSERT INTO dbo.ListingPhotos (${photoInsertColumns.join(", ")})
+            VALUES (${photoInsertValues.join(", ")})
+          `);
+        }
+      }
+
+      await transaction.commit();
+      return true;
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
+  /**
    * Returns all active listings with pagination
    */
   static async getAllListings(
@@ -722,6 +1023,9 @@ export class ListingsService {
         `l.AllowSmoking IN (${uniqueAllowSmoking.map((_, idx) => `@AllowSmoking${idx}`).join(", ")})`
       );
     }
+    if (filters.landlordId) {
+      whereClauses.push("l.LandlordId = @LandlordId");
+    }
 
     const applyFilterParams = (request: sql.Request) => {
       searchKeywords.forEach((keyword, idx) => {
@@ -766,6 +1070,9 @@ export class ListingsService {
       uniqueAllowSmoking.forEach((value, idx) => {
         request.input(`AllowSmoking${idx}`, sql.Bit, value);
       });
+      if (filters.landlordId) {
+        request.input("LandlordId", sql.UniqueIdentifier, filters.landlordId);
+      }
     };
 
     const sortClause =

@@ -1,13 +1,11 @@
-import { useMemo, useState } from 'react';
-import { MapPin, Plus, Trash2, Send, CheckCircle2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Plus, Trash2, Send, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch, ApiError } from '../../lib/api';
+import { useToast } from '../../context/ToastContext';
 import Navbar from '../../components/Navbar';
-import GoogleLocationPickerMap from '../../components/GoogleLocationPickerMap';
 import {
   forwardGeocode,
-  reverseGeocode,
-  type Coordinates,
 } from '../../lib/googleMaps';
 
 interface LocationState {
@@ -15,167 +13,187 @@ interface LocationState {
   longitude: number;
 }
 
-interface RoomDetails {
-  id: string; // for React keys
-  floorLevelId: number;
-  maxOccupants: number;
-  foodPreferenceId: number;
-  allowSmoking: boolean;
-  monthlyRent: number;
-  furnishingTypeId: number;
-  availableFrom: string;
-  description: string;
-  securityDeposit: number;
-  propertyTypeId: number;
-  foodLevelId: number;
-  bedType: 'Single' | 'Double' | 'Mixed';
-  singleBedCount: number;
-  doubleBedCount: number;
-}
-type RoomPayload = Omit<RoomDetails, 'id'>;
-type ListingPhoto = {
-  photoType: 'Exterior' | 'Room';
-  photoUrl: string;
-  blobId?: string;
-  displayOrder?: number;
+const FALLBACK_AREA_OPTIONS = [
+  'Sanganer',
+  'Malviya Nagar',
+  'Mansarovar',
+  'Jagatpura',
+  'Vaishali Nagar',
+  'Tonk Phatak',
+  'Vidhyadhar Nagar',
+];
+
+const FALLBACK_COLONY_OPTIONS_BY_AREA: Record<string, string[]> = {
+  Sanganer: ['Saini Colony', 'Panchwati Colony', 'Sitaram Colony', 'Nand Colony', 'Kohinoor Nagar'],
+  'Malviya Nagar': ['Model Town', 'Shanti Nagar', 'Patel Colony', 'Sector 1', 'Sector 9'],
+  Mansarovar: ['Patel Marg', 'Agarwal Farm', 'Rajat Path', 'Shipra Path', 'Madhyam Marg'],
+  Jagatpura: ['Ramnagariya', 'Ashadeep Green Avenue', 'Mahima Panache', 'Ramnagariya South'],
+  'Vaishali Nagar': ['Gandhi Path', 'Nemi Nagar', 'Chitrakoot', 'Hanuman Nagar', 'Queens Road'],
+  'Tonk Phatak': ['Barkat Nagar', 'Gopalpura Bypass', 'Mahesh Nagar', 'Lal Kothi'],
+  'Vidhyadhar Nagar': ['Sector 1', 'Sector 2', 'Sector 3', 'Sector 5', 'Central Spine'],
 };
 
-type UploadSlot = 'exterior' | `room-${number}-${number}`;
+type LocationOption = {
+  area: string;
+  colonies: string[];
+};
 
-const DEFAULT_COORDS = { latitude: 26.9124, longitude: 75.7873 };
+interface RoomDetails {
+  id: string; // for React keys
+  floorLevelId: number | '';
+  maxOccupants: number | '';
+  foodPreferenceId: number | '';
+  allowSmoking: boolean;
+  monthlyRent: number | '';
+  furnishingTypeId: number | '';
+  availableFrom: string;
+  description: string;
+  securityDeposit: number | '';
+  propertyTypeId: number | '';
+  foodLevelId: number | '';
+  bedType: 'Single' | 'Double' | 'Mixed' | '';
+  singleBedCount: number | '';
+  doubleBedCount: number | '';
+}
+type RoomPayload = Omit<RoomDetails, 'id'>;
+
+type UploadSlot = 'exterior' | `room-${number}-${number}`;
 const IMAGES_PER_ROOM = 3;
 const createEmptyRoomImages = () => Array.from({ length: IMAGES_PER_ROOM }, () => '');
+const createEmptyRoomFiles = () => Array.from({ length: IMAGES_PER_ROOM }, () => null as File | null);
+const createEmptyRoom = (): RoomDetails => ({
+  id: crypto.randomUUID(),
+  floorLevelId: '',
+  maxOccupants: '',
+  foodPreferenceId: '',
+  allowSmoking: false,
+  monthlyRent: '',
+  furnishingTypeId: '',
+  availableFrom: '',
+  description: '',
+  securityDeposit: '',
+  propertyTypeId: '',
+  foodLevelId: '',
+  bedType: '',
+  singleBedCount: '',
+  doubleBedCount: '',
+});
 
 export default function AddListing() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [step, setStep] = useState<1 | 2 | 3>(1); // 1: Location, 2: Rooms, 3: Success
   const [location, setLocation] = useState<LocationState | null>(null);
   const [address, setAddress] = useState<string>('');
-  const [isLocating, setIsLocating] = useState(false);
-  const [resolvingMapLocation, setResolvingMapLocation] = useState(false);
+  const [houseNo, setHouseNo] = useState('');
+  const [landmark, setLandmark] = useState('');
+  const [pincode, setPincode] = useState('');
+  const [area, setArea] = useState('');
+  const [colony, setColony] = useState('');
+  const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [exteriorPhotoUrl, setExteriorPhotoUrl] = useState('');
-  const [exteriorBlobId, setExteriorBlobId] = useState('');
+  const [exteriorPhotoFile, setExteriorPhotoFile] = useState<File | null>(null);
   const [roomPhotoUrls, setRoomPhotoUrls] = useState<string[][]>([createEmptyRoomImages()]);
-  const [roomBlobIds, setRoomBlobIds] = useState<string[][]>([createEmptyRoomImages()]);
-  const [uploadingSlot, setUploadingSlot] = useState<UploadSlot | null>(null);
+  const [roomPhotoFiles, setRoomPhotoFiles] = useState<(File | null)[][]>([createEmptyRoomFiles()]);
   
-  const [rooms, setRooms] = useState<RoomDetails[]>([
-    {
-      id: crypto.randomUUID(),
-      floorLevelId: 1,
-      maxOccupants: 1,
-      foodPreferenceId: 3,
-      allowSmoking: false,
-      monthlyRent: 5000,
-      furnishingTypeId: 1,
-      availableFrom: new Date().toISOString().split('T')[0],
-      description: '',
-      securityDeposit: 0,
-      propertyTypeId: 1,
-      foodLevelId: 1,
-      bedType: 'Single',
-      singleBedCount: 1,
-      doubleBedCount: 0,
-    }
-  ]);
+  const [rooms, setRooms] = useState<RoomDetails[]>([createEmptyRoom()]);
 
-  const mapCenter = useMemo<Coordinates>(() => {
-    if (!location) return { lat: DEFAULT_COORDS.latitude, lng: DEFAULT_COORDS.longitude };
-    return { lat: location.latitude, lng: location.longitude };
-  }, [location]);
+  const areaToColonies = useMemo(() => {
+    if (locationOptions.length === 0) return FALLBACK_COLONY_OPTIONS_BY_AREA;
+    const mapped: Record<string, string[]> = {};
+    locationOptions.forEach((item) => {
+      mapped[item.area] = item.colonies;
+    });
+    return mapped;
+  }, [locationOptions]);
+  const areaOptions = useMemo(
+    () => (locationOptions.length ? locationOptions.map((item) => item.area) : FALLBACK_AREA_OPTIONS),
+    [locationOptions]
+  );
+  const colonyOptions = useMemo(() => (area ? (areaToColonies[area] ?? []) : []), [area, areaToColonies]);
 
-  const canContinueToDetails = Boolean(location || address.trim().length > 5);
-
-  const applyLocationFromMap = async (coords: Coordinates) => {
-    setLocation({ latitude: coords.lat, longitude: coords.lng });
-    setResolvingMapLocation(true);
-    setErrorMsg('');
-    try {
-      const exactAddress = await reverseGeocode(coords.lat, coords.lng);
-      setAddress(exactAddress);
-    } catch {
-      setAddress(`${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`);
-    } finally {
-      setResolvingMapLocation(false);
-    }
-  };
-
-  const handleFetchLocation = () => {
-    setIsLocating(true);
-    setErrorMsg('');
-    
-    if (!navigator.geolocation) {
-      setErrorMsg('Geolocation is not supported by your browser');
-      setIsLocating(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const nextLocation = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-        setLocation(nextLocation);
-        try {
-          const exactAddress = await reverseGeocode(nextLocation.latitude, nextLocation.longitude);
-          setAddress(exactAddress);
-        } catch {
-          setAddress(`${nextLocation.latitude.toFixed(6)}, ${nextLocation.longitude.toFixed(6)}`);
-        } finally {
-          setIsLocating(false);
+  useEffect(() => {
+    let mounted = true;
+    const loadLocationOptions = async () => {
+      try {
+        const response = await apiFetch<{ items: LocationOption[] }>('/api/listings/location-options', {
+          method: 'GET',
+        });
+        if (!mounted) return;
+        if (Array.isArray(response.items) && response.items.length > 0) {
+          setLocationOptions(response.items);
         }
-      },
-      (error) => {
-        console.error(error);
-        setErrorMsg('Failed to fetch location. Please ensure you have granted location permissions.');
-        setIsLocating(false);
-      },
-      { enableHighAccuracy: true }
-    );
-  };
+      } catch (err: unknown) {
+        if (err instanceof ApiError && err.status === 401) {
+          navigate('/login');
+        }
+      }
+    };
+    void loadLocationOptions();
+    return () => {
+      mounted = false;
+    };
+  }, [navigate]);
+  const composedAddress = useMemo(() => {
+    const parts = [
+      houseNo.trim(),
+      landmark.trim(),
+      colony.trim(),
+      area.trim(),
+      pincode.trim(),
+      'Jaipur',
+      'Rajasthan',
+      'India',
+    ].filter(Boolean);
+    return parts.join(', ');
+  }, [houseNo, landmark, colony, area, pincode]);
+  const hasValidStep1Fields = Boolean(
+    houseNo.trim() && area.trim() && colony.trim() && /^\d{6}$/.test(pincode.trim())
+  );
+  const canContinueToDetails = hasValidStep1Fields;
 
-  const handleManualLocation = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = address.trim();
-    if (trimmed.length <= 5) {
-      setErrorMsg('Please enter a full, valid address');
-      return;
+  const prepareManualLocation = async () => {
+    if (!houseNo.trim()) {
+      setErrorMsg('House No. is required');
+      return false;
+    }
+    if (!area || !colony) {
+      setErrorMsg('Please select both area and colony');
+      return false;
+    }
+    if (!/^\d{6}$/.test(pincode.trim())) {
+      setErrorMsg('Please enter a valid 6-digit pincode');
+      return false;
     }
     setErrorMsg('');
+    const trimmed = composedAddress.trim();
+    setAddress(trimmed);
     const coords = await forwardGeocode(trimmed);
     if (coords) {
       setLocation({ latitude: coords.lat, longitude: coords.lng });
     } else {
       setLocation(null);
     }
+    return true;
+  };
+
+  const handleContinueToDetails = async () => {
+    if (!location) {
+      const ok = await prepareManualLocation();
+      if (!ok) return;
+    }
+    setStep(2);
   };
 
   const handleAddRoom = () => {
     setRooms([
       ...rooms,
-      {
-        id: crypto.randomUUID(),
-        floorLevelId: 1,
-        maxOccupants: 1,
-        foodPreferenceId: 3,
-        allowSmoking: false,
-        monthlyRent: 5000,
-        furnishingTypeId: 1,
-        availableFrom: new Date().toISOString().split('T')[0],
-        description: '',
-        securityDeposit: 0,
-        propertyTypeId: 1,
-        foodLevelId: 1,
-        bedType: 'Single',
-        singleBedCount: 1,
-        doubleBedCount: 0,
-      }
+      createEmptyRoom(),
     ]);
     setRoomPhotoUrls((prev) => [...prev, createEmptyRoomImages()]);
-    setRoomBlobIds((prev) => [...prev, createEmptyRoomImages()]);
+    setRoomPhotoFiles((prev) => [...prev, createEmptyRoomFiles()]);
   };
 
   const handleRemoveRoom = (id: string) => {
@@ -184,7 +202,7 @@ export default function AddListing() {
     if (removeIndex === -1) return;
     setRooms(rooms.filter(r => r.id !== id));
     setRoomPhotoUrls((prev) => prev.filter((_, index) => index !== removeIndex));
-    setRoomBlobIds((prev) => prev.filter((_, index) => index !== removeIndex));
+    setRoomPhotoFiles((prev) => prev.filter((_, index) => index !== removeIndex));
   };
 
   const updateRoom = <K extends keyof RoomDetails>(
@@ -196,63 +214,18 @@ export default function AddListing() {
   };
 
   const digitsOnly = (value: string) => value.replace(/\D/g, '');
-  const toNumberOr = (value: string, fallback: number) => {
+  const toOptionalNumber = (value: string): number | '' => {
     const sanitized = digitsOnly(value);
-    return sanitized ? parseInt(sanitized, 10) : fallback;
+    return sanitized ? parseInt(sanitized, 10) : '';
   };
-  const toBoundedNumber = (
+  const toBoundedOptionalNumber = (
     value: string,
     min: number,
-    max: number,
-    fallback: number
-  ) => Math.min(max, Math.max(min, toNumberOr(value, fallback)));
-
-  const uploadImageForSlot = async (file: File, slot: UploadSlot) => {
-    try {
-      setErrorMsg('');
-      setUploadingSlot(slot);
-      const formData = new FormData();
-      formData.append('image', file);
-
-      const response = await apiFetch<{ url: string; blobId: string }>('/api/uploads/image', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (slot === 'exterior') {
-        setExteriorPhotoUrl(response.url);
-        setExteriorBlobId(response.blobId);
-        return;
-      }
-
-      const match = /^room-(\d+)-(\d+)$/.exec(slot);
-      if (!match) return;
-      const roomIndex = Number(match[1]);
-      const imageIndex = Number(match[2]);
-      if (!Number.isFinite(roomIndex) || !Number.isFinite(imageIndex)) return;
-      if (roomIndex < 0 || imageIndex < 0 || imageIndex >= IMAGES_PER_ROOM) return;
-
-      setRoomPhotoUrls((prev) =>
-        prev.map((roomImages, i) =>
-          i === roomIndex ? roomImages.map((value, j) => (j === imageIndex ? response.url : value)) : roomImages
-        )
-      );
-      setRoomBlobIds((prev) =>
-        prev.map((roomImages, i) =>
-          i === roomIndex
-            ? roomImages.map((value, j) => (j === imageIndex ? response.blobId : value))
-            : roomImages
-        )
-      );
-    } catch (err: unknown) {
-      if (err instanceof ApiError && err.status === 401) {
-        navigate('/login');
-        return;
-      }
-      setErrorMsg(err instanceof Error ? err.message : 'Image upload failed');
-    } finally {
-      setUploadingSlot(null);
-    }
+    max: number
+  ): number | '' => {
+    const parsed = toOptionalNumber(value);
+    if (parsed === '') return '';
+    return Math.min(max, Math.max(min, parsed));
   };
 
   const handleFileInput = async (
@@ -261,84 +234,199 @@ export default function AddListing() {
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    await uploadImageForSlot(file, slot);
+    if (slot === 'exterior') {
+      setExteriorPhotoFile(file);
+      setExteriorPhotoUrl(URL.createObjectURL(file));
+      event.target.value = '';
+      return;
+    }
+
+    const match = /^room-(\d+)-(\d+)$/.exec(slot);
+    if (!match) {
+      event.target.value = '';
+      return;
+    }
+    const roomIndex = Number(match[1]);
+    const imageIndex = Number(match[2]);
+    if (!Number.isFinite(roomIndex) || !Number.isFinite(imageIndex)) {
+      event.target.value = '';
+      return;
+    }
+
+    setRoomPhotoFiles((prev) =>
+      prev.map((roomImages, i) =>
+        i === roomIndex ? roomImages.map((value, j) => (j === imageIndex ? file : value)) : roomImages
+      )
+    );
+    setRoomPhotoUrls((prev) =>
+      prev.map((roomImages, i) =>
+        i === roomIndex
+          ? roomImages.map((value, j) => (j === imageIndex ? URL.createObjectURL(file) : value))
+          : roomImages
+      )
+    );
     event.target.value = '';
   };
 
   const handleSubmit = async () => {
-    if (!location && !address) return;
+    const finalAddress = address.trim() || composedAddress.trim();
+
+    if (!houseNo.trim() || !area.trim() || !colony.trim() || !/^\d{6}$/.test(pincode.trim())) {
+      setErrorMsg('Please fill all location fields correctly (Landmark is optional)');
+      return;
+    }
+
+    if (!location && !finalAddress) {
+      setErrorMsg('Address is required');
+      return;
+    }
+
+    for (let roomIndex = 0; roomIndex < rooms.length; roomIndex += 1) {
+      const room = rooms[roomIndex];
+      if (!room) continue;
+
+      if (room.propertyTypeId === '') {
+        setErrorMsg(`Room ${roomIndex + 1}: Property Type is required`);
+        return;
+      }
+      if (room.floorLevelId === '') {
+        setErrorMsg(`Room ${roomIndex + 1}: Floor Level is required`);
+        return;
+      }
+      if (room.maxOccupants === '') {
+        setErrorMsg(`Room ${roomIndex + 1}: Max Occupants is required`);
+        return;
+      }
+      if (room.furnishingTypeId === '') {
+        setErrorMsg(`Room ${roomIndex + 1}: Furnishing is required`);
+        return;
+      }
+      const isIndividual = room.propertyTypeId === 2;
+      if (!isIndividual && room.foodPreferenceId === '') {
+        setErrorMsg(`Room ${roomIndex + 1}: Food Preference is required`);
+        return;
+      }
+      if (!isIndividual && room.foodLevelId === '') {
+        setErrorMsg(`Room ${roomIndex + 1}: Food Level is required`);
+        return;
+      }
+      if (room.bedType === '') {
+        setErrorMsg(`Room ${roomIndex + 1}: Bed Type is required`);
+        return;
+      }
+      if (room.bedType === 'Single' || room.bedType === 'Mixed') {
+        if (room.singleBedCount === '') {
+          setErrorMsg(`Room ${roomIndex + 1}: Single Bed Count is required`);
+          return;
+        }
+      }
+      if (room.bedType === 'Double' || room.bedType === 'Mixed') {
+        if (room.doubleBedCount === '') {
+          setErrorMsg(`Room ${roomIndex + 1}: Double Bed Count is required`);
+          return;
+        }
+      }
+      if (room.securityDeposit === '') {
+        setErrorMsg(`Room ${roomIndex + 1}: Security Deposit is required`);
+        return;
+      }
+      if (!room.availableFrom.trim()) {
+        setErrorMsg(`Room ${roomIndex + 1}: Available From is required`);
+        return;
+      }
+      if (!room.description.trim()) {
+        setErrorMsg(`Room ${roomIndex + 1}: Description is required`);
+        return;
+      }
+      if (room.monthlyRent === '' || room.monthlyRent <= 0) {
+        setErrorMsg(`Room ${roomIndex + 1}: Monthly Rent is required`);
+        return;
+      }
+
+      const hasRoomImage = (roomPhotoUrls[roomIndex] || []).some((url) => url.trim().length > 0);
+      if (!hasRoomImage) {
+        setErrorMsg(`Room ${roomIndex + 1}: at least one room image is required`);
+        return;
+      }
+    }
+
+    if (!exteriorPhotoUrl.trim()) {
+      setErrorMsg('Exterior image is required');
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorMsg('');
 
     try {
       // Format payload correctly (stripping UI-only ids)
       const payloadRooms: RoomPayload[] = rooms.map((room) => {
-        const roomPayload = { ...room } as Partial<RoomDetails>;
-        delete roomPayload.id;
+        const roomPayload: RoomPayload = {
+          floorLevelId: Number(room.floorLevelId),
+          maxOccupants: Number(room.maxOccupants),
+          foodPreferenceId: room.propertyTypeId === 2 ? 3 : Number(room.foodPreferenceId),
+          allowSmoking: room.allowSmoking,
+          monthlyRent: Number(room.monthlyRent),
+          furnishingTypeId: Number(room.furnishingTypeId),
+          availableFrom: room.availableFrom.slice(0, 10),
+          description: room.description,
+          securityDeposit: Number(room.securityDeposit),
+          propertyTypeId: Number(room.propertyTypeId),
+          foodLevelId: room.propertyTypeId === 2 ? 1 : Number(room.foodLevelId),
+          bedType: room.bedType,
+          singleBedCount:
+            room.bedType === 'Single' || room.bedType === 'Mixed'
+              ? Number(room.singleBedCount)
+              : 0,
+          doubleBedCount:
+            room.bedType === 'Double' || room.bedType === 'Mixed'
+              ? Number(room.doubleBedCount)
+              : 0,
+        };
         return roomPayload as RoomPayload;
       });
-      const isBulk = payloadRooms.length > 1;
-
-      const buildPhotosForRoom = (roomIndex: number): ListingPhoto[] => {
-        const photos: ListingPhoto[] = [];
-        if (exteriorPhotoUrl.trim()) {
-          photos.push({
-            photoType: 'Exterior',
-            photoUrl: exteriorPhotoUrl.trim(),
-            ...(exteriorBlobId ? { blobId: exteriorBlobId } : {}),
-          });
-        }
-        const roomImages = roomPhotoUrls[roomIndex] || [];
-        const roomImageBlobIds = roomBlobIds[roomIndex] || [];
-        for (let imageIndex = 0; imageIndex < IMAGES_PER_ROOM; imageIndex += 1) {
-          const roomPhotoUrl = (roomImages[imageIndex] || '').trim();
-          if (!roomPhotoUrl) continue;
-          photos.push({
-            photoType: 'Room',
-            photoUrl: roomPhotoUrl,
-            ...(roomImageBlobIds[imageIndex] ? { blobId: roomImageBlobIds[imageIndex] } : {}),
-            displayOrder: photos.length + 1,
-          });
-        }
-        return photos;
+      const normalizeUrl = (value: string) => {
+        const trimmed = value.trim();
+        if (!trimmed || trimmed.startsWith("blob:")) return "";
+        return trimmed;
       };
 
-      if (!isBulk) {
-        await apiFetch('/api/listings', {
-          method: 'POST',
-          body: JSON.stringify({
-            location,
-            address,
-            room: payloadRooms[0],
-            photos: buildPhotosForRoom(0),
-          }),
-        });
-      } else {
-        const hasAnyPhotos =
-          exteriorPhotoUrl.trim().length > 0 ||
-          roomPhotoUrls.some((roomImages) => roomImages.some((url) => url.trim()));
+      const formData = new FormData();
+      formData.append(
+        "data",
+        JSON.stringify({
+          location,
+          address: finalAddress,
+          rooms: payloadRooms,
+          exteriorPhotoUrl: exteriorPhotoFile ? "" : normalizeUrl(exteriorPhotoUrl),
+          roomPhotoUrls: roomPhotoUrls.map((roomImages, roomIndex) =>
+            roomImages.map((url, imageIndex) => {
+              if (roomPhotoFiles[roomIndex]?.[imageIndex]) return "";
+              return normalizeUrl(url);
+            })
+          ),
+        })
+      );
 
-        if (!hasAnyPhotos) {
-          await apiFetch('/api/listings/bulk', {
-            method: 'POST',
-            body: JSON.stringify({ location, address, rooms: payloadRooms }),
-          });
-        } else {
-          for (let index = 0; index < payloadRooms.length; index += 1) {
-            await apiFetch('/api/listings', {
-              method: 'POST',
-              body: JSON.stringify({
-                location,
-                address,
-                room: payloadRooms[index],
-                photos: buildPhotosForRoom(index),
-              }),
-            });
-          }
+      if (exteriorPhotoFile) {
+        formData.append("exteriorFile", exteriorPhotoFile);
+      }
+
+      for (let roomIndex = 0; roomIndex < roomPhotoFiles.length; roomIndex += 1) {
+        for (let imageIndex = 0; imageIndex < IMAGES_PER_ROOM; imageIndex += 1) {
+          const file = roomPhotoFiles[roomIndex]?.[imageIndex];
+          if (!file) continue;
+          formData.append(`roomFile-${roomIndex}-${imageIndex}`, file);
         }
       }
 
+      await apiFetch('/api/listings/submit', {
+        method: 'POST',
+        body: formData,
+      });
+
       setStep(3);
+      showToast('Listing posted successfully', 'success');
     } catch (err: unknown) {
       if (err instanceof ApiError && err.status === 401) {
         navigate("/login");
@@ -373,61 +461,91 @@ export default function AddListing() {
         <div className="glass-card location-step-card">
           <h2 className="text-center">Where is your property located?</h2>
           <p className="mb-4 text-center">We'll precisely pinpoint your location to help tenants find you easily.</p>
-          
-          <div className="text-center mb-4">
-            <button 
-              className="btn btn-primary" 
-              onClick={handleFetchLocation}
-              disabled={isLocating || resolvingMapLocation}
-            >
-              <MapPin size={20} />
-              {isLocating ? 'Locating...' : resolvingMapLocation ? 'Updating...' : 'Fetch My Location'}
-            </button>
-          </div>
 
-          <div className="divider-or">
-            <div className="divider-line"></div>
-            <span>OR ENTER MANUALLY</span>
-            <div className="divider-line"></div>
-          </div>
-
-          <form onSubmit={handleManualLocation} className="flex-col location-form">
-            <div className="form-group">
-              <label>Full Property Address</label>
-              <textarea 
-                className="input-style" 
-                placeholder="e.g. Plot No 24, Near SBI Bank, Malviya Nagar, Jaipur, Rajasthan 302017"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                rows={3}
-                required 
-              />
+          <div className="flex-col location-form">
+            <div className="location-fields-grid">
+              <div className="form-group">
+                <label>House No.</label>
+                <input
+                  className="input-style"
+                  placeholder="e.g. 24/7"
+                  value={houseNo}
+                  onChange={(e) => setHouseNo(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Landmark (Optional)</label>
+                <input
+                  className="input-style"
+                  placeholder="e.g. Near SBI Bank"
+                  value={landmark}
+                  onChange={(e) => setLandmark(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label>Area</label>
+                <select
+                  className="input-style"
+                  value={area}
+                  onChange={(e) => {
+                    const selectedArea = e.target.value;
+                    setArea(selectedArea);
+                    const validColonies = areaToColonies[selectedArea] ?? [];
+                    if (!validColonies.includes(colony)) {
+                      setColony('');
+                    }
+                  }}
+                  required
+                >
+                  <option value="" disabled>Select area</option>
+                  {areaOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              </div>
+              <div className="form-group">
+                <label>Colony</label>
+                <select
+                  className="input-style"
+                  value={colony}
+                  onChange={(e) => setColony(e.target.value)}
+                  disabled={!area}
+                  required
+                >
+                  <option value="" disabled>{area ? 'Select colony' : 'Select area first'}</option>
+                  {colonyOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Pincode</label>
+                <input
+                  type="text"
+                  className="input-style"
+                  placeholder="e.g. 302017"
+                  value={pincode}
+                  onChange={(e) => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  required
+                />
+              
             </div>
-            <button type="submit" className="btn btn-outline w-full">
-              Confirm Address
-            </button>
-          </form>
+          </div>
           
           {errorMsg && <p className="mt-4 text-center add-listing-error">{errorMsg}</p>}
-
-          <div className="map-preview-card">
-            <h3>Location Preview</h3>
-            <GoogleLocationPickerMap
-              center={mapCenter}
-              onSelect={(coords) => void applyLocationFromMap(coords)}
-              className="map-preview-frame"
-            />
-            <p className="profile-map-help">
-              Click on map or drag the marker to update the property location.
-            </p>
-          </div>
 
           <div className="text-center mt-4">
             <button
               type="button"
               className="btn btn-primary publish-btn"
-              disabled={!canContinueToDetails || isLocating || resolvingMapLocation}
-              onClick={() => setStep(2)}
+              disabled={!canContinueToDetails}
+              onClick={() => void handleContinueToDetails()}
             >
               Continue to Room Details
             </button>
@@ -467,8 +585,9 @@ export default function AddListing() {
                     <select
                       className="input-style"
                       value={room.propertyTypeId}
-                      onChange={(e) => updateRoom(room.id, 'propertyTypeId', parseInt(e.target.value))}
+                      onChange={(e) => updateRoom(room.id, 'propertyTypeId', e.target.value ? parseInt(e.target.value, 10) : '')}
                     >
+                      <option value="" disabled>Select property type</option>
                       <option value={1}>PG</option>
                       <option value={2}>Individual</option>
                       <option value={3}>Flat</option>
@@ -480,8 +599,9 @@ export default function AddListing() {
                     <select 
                       className="input-style"
                       value={room.floorLevelId}
-                      onChange={(e) => updateRoom(room.id, 'floorLevelId', parseInt(e.target.value))}
+                      onChange={(e) => updateRoom(room.id, 'floorLevelId', e.target.value ? parseInt(e.target.value, 10) : '')}
                     >
+                      <option value="" disabled>Select floor</option>
                       <option value={1}>Ground Floor</option>
                       <option value={2}>1st Floor</option>
                       <option value={3}>2nd Floor</option>
@@ -492,32 +612,27 @@ export default function AddListing() {
 
                   <div className="form-group">
                     <label>Max Occupants</label>
-                    <input 
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
+                    <select 
                       className="input-style"
                       value={room.maxOccupants}
-                      onChange={(e) =>
-                        updateRoom(
-                          room.id,
-                          'maxOccupants',
-                          toBoundedNumber(e.target.value, 1, 4, 1)
-                        )
-                      }
-                    />
+                      onChange={(e) => updateRoom(room.id, 'maxOccupants', e.target.value ? parseInt(e.target.value, 10) : '')}
+                    >
+                      <option value="" disabled>Select max occupants</option>
+                      <option value={1}>1</option>
+                      <option value={2}>2</option>
+                      <option value={3}>3</option>
+                      <option value={4}>4</option>
+                    </select>
                   </div>
 
                   <div className="form-group">
                     <label>Monthly Rent (₹)</label>
                     <input 
                       type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
                       className="input-style"
                       value={room.monthlyRent}
                       onChange={(e) =>
-                        updateRoom(room.id, 'monthlyRent', toNumberOr(e.target.value, 0))
+                        updateRoom(room.id, 'monthlyRent', toOptionalNumber(e.target.value))
                       }
                     />
                   </div>
@@ -527,93 +642,121 @@ export default function AddListing() {
                     <select 
                       className="input-style"
                       value={room.furnishingTypeId}
-                      onChange={(e) => updateRoom(room.id, 'furnishingTypeId', parseInt(e.target.value))}
+                      onChange={(e) => updateRoom(room.id, 'furnishingTypeId', e.target.value ? parseInt(e.target.value, 10) : '')}
                     >
+                      <option value="" disabled>Select furnishing</option>
                       <option value={1}>Unfurnished</option>
                       <option value={2}>Semi-Furnished</option>
                       <option value={3}>Fully-Furnished</option>
                     </select>
                   </div>
 
-                  <div className="form-group">
-                    <label>Food Preference</label>
-                    <select 
-                      className="input-style"
-                      value={room.foodPreferenceId}
-                      onChange={(e) => updateRoom(room.id, 'foodPreferenceId', parseInt(e.target.value))}
-                    >
-                      <option value={1}>Veg Only</option>
-                      <option value={2}>Non-Veg Allowed</option>
-                      <option value={3}>No Restriction</option>
-                    </select>
-                  </div>
+                  {room.propertyTypeId !== 2 && (
+                    <div className="form-group">
+                      <label>Food Preference</label>
+                      <select 
+                        className="input-style"
+                        value={room.foodPreferenceId}
+                        onChange={(e) => updateRoom(room.id, 'foodPreferenceId', e.target.value ? parseInt(e.target.value, 10) : '')}
+                      >
+                        <option value="" disabled>Select food preference</option>
+                        <option value={1}>Veg Only</option>
+                        <option value={2}>Non-Veg Allowed</option>
+                        <option value={3}>No Restriction</option>
+                      </select>
+                    </div>
+                  )}
 
-                  <div className="form-group">
-                    <label>Food Level</label>
-                    <select
-                      className="input-style"
-                      value={room.foodLevelId}
-                      onChange={(e) => updateRoom(room.id, 'foodLevelId', parseInt(e.target.value))}
-                    >
-                      <option value={1}>Basic</option>
-                      <option value={2}>Standard</option>
-                      <option value={3}>Premium</option>
-                    </select>
-                  </div>
+                  {room.propertyTypeId !== 2 && (
+                    <div className="form-group">
+                      <label>Food Level</label>
+                      <select
+                        className="input-style"
+                        value={room.foodLevelId}
+                        onChange={(e) => updateRoom(room.id, 'foodLevelId', e.target.value ? parseInt(e.target.value, 10) : '')}
+                      >
+                        <option value="" disabled>Select food level</option>
+                        <option value={1}>Basic</option>
+                        <option value={2}>Standard</option>
+                        <option value={3}>Premium</option>
+                      </select>
+                    </div>
+                  )}
 
                   <div className="form-group">
                     <label>Bed Type</label>
                     <select
                       className="input-style"
                       value={room.bedType}
-                      onChange={(e) => updateRoom(room.id, 'bedType', e.target.value as 'Single' | 'Double' | 'Mixed')}
+                      onChange={(e) => {
+                        const nextType = e.target.value as 'Single' | 'Double' | 'Mixed' | '';
+                        setRooms((prev) =>
+                          prev.map((item) =>
+                            item.id === room.id
+                              ? {
+                                  ...item,
+                                  bedType: nextType,
+                                  singleBedCount:
+                                    nextType === 'Single' || nextType === 'Mixed'
+                                      ? item.singleBedCount
+                                      : '',
+                                  doubleBedCount:
+                                    nextType === 'Double' || nextType === 'Mixed'
+                                      ? item.doubleBedCount
+                                      : '',
+                                }
+                              : item
+                          )
+                        );
+                      }}
                     >
+                      <option value="" disabled>Select bed type</option>
                       <option value="Single">Single Bed</option>
                       <option value="Double">Double Bed</option>
                       <option value="Mixed">Mixed (Single + Double)</option>
                     </select>
                   </div>
 
-                  <div className="form-group">
-                    <label>Single Bed Count</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      className="input-style"
-                      value={room.singleBedCount}
-                      onChange={(e) =>
-                        updateRoom(
-                          room.id,
-                          'singleBedCount',
-                          toBoundedNumber(e.target.value, 0, 10, 0)
-                        )
-                      }
-                    />
-                  </div>
+                  {(room.bedType === 'Single' || room.bedType === 'Mixed') && (
+                    <div className="form-group">
+                      <label>Single Bed Count</label>
+                      <input
+                        type="text"
+                        className="input-style"
+                        value={room.singleBedCount}
+                        onChange={(e) =>
+                          updateRoom(
+                            room.id,
+                            'singleBedCount',
+                            toBoundedOptionalNumber(e.target.value, 0, 10)
+                          )
+                        }
+                      />
+                    </div>
+                  )}
+
+                  {(room.bedType === 'Double' || room.bedType === 'Mixed') && (
+                    <div className="form-group">
+                      <label>Double Bed Count</label>
+                      <input
+                        type="text"
+                        className="input-style"
+                        value={room.doubleBedCount}
+                        onChange={(e) =>
+                          updateRoom(
+                            room.id,
+                            'doubleBedCount',
+                            toBoundedOptionalNumber(e.target.value, 0, 10)
+                          )
+                        }
+                      />
+                    </div>
+                  )}
 
                   <div className="form-group">
-                    <label>Double Bed Count</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      className="input-style"
-                      value={room.doubleBedCount}
-                      onChange={(e) =>
-                        updateRoom(
-                          room.id,
-                          'doubleBedCount',
-                          toBoundedNumber(e.target.value, 0, 10, 0)
-                        )
-                      }
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Available From</label>
+                    <label>Available From (Date & Time)</label>
                     <input 
-                      type="date"
+                      type="datetime-local"
                       className="input-style"
                       value={room.availableFrom}
                       onChange={(e) => updateRoom(room.id, 'availableFrom', e.target.value)}
@@ -624,12 +767,10 @@ export default function AddListing() {
                     <label>Security Deposit (₹)</label>
                     <input
                       type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
                       className="input-style"
                       value={room.securityDeposit}
                       onChange={(e) =>
-                        updateRoom(room.id, 'securityDeposit', toNumberOr(e.target.value, 0))
+                        updateRoom(room.id, 'securityDeposit', toOptionalNumber(e.target.value))
                       }
                     />
                   </div>
@@ -667,32 +808,6 @@ export default function AddListing() {
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
                               Image {imageIndex + 1}
                             </label>
-                            <input
-                              type="url"
-                              className="input-style"
-                              value={imageUrl}
-                              onChange={(e) => {
-                                setRoomPhotoUrls((prev) =>
-                                  prev.map((roomImages, roomIdx) =>
-                                    roomIdx === index
-                                      ? roomImages.map((value, imgIdx) =>
-                                          imgIdx === imageIndex ? e.target.value : value
-                                        )
-                                      : roomImages
-                                  )
-                                );
-                                setRoomBlobIds((prev) =>
-                                  prev.map((roomImages, roomIdx) =>
-                                    roomIdx === index
-                                      ? roomImages.map((value, imgIdx) =>
-                                          imgIdx === imageIndex ? '' : value
-                                        )
-                                      : roomImages
-                                  )
-                                );
-                              }}
-                              placeholder="https://example.com/room.jpg"
-                            />
                             <div className="flex-row image-upload-actions">
                               <label className="btn btn-outline image-upload-btn">
                                 Upload File
@@ -704,7 +819,6 @@ export default function AddListing() {
                                 />
                               </label>
                             </div>
-                            {uploadingSlot === slot && <p>Uploading room image...</p>}
                             {imageUrl.trim() && (
                               <img
                                 src={imageUrl}
@@ -737,17 +851,7 @@ export default function AddListing() {
               <p className="mb-4">Add an exterior image. Room images are attached inside each room card.</p>
               <div className="flex-col">
                 <div className="form-group">
-                  <label>Exterior Image URL</label>
-                  <input
-                    type="url"
-                    className="input-style"
-                    value={exteriorPhotoUrl}
-                    onChange={(e) => {
-                      setExteriorPhotoUrl(e.target.value);
-                      setExteriorBlobId('');
-                    }}
-                    placeholder="https://example.com/exterior.jpg"
-                  />
+                  <label>Exterior Image</label>
                   <div className="flex-row image-upload-actions">
                     <label className="btn btn-outline image-upload-btn">
                       Upload File
@@ -760,7 +864,6 @@ export default function AddListing() {
                     </label>
                    
                   </div>
-                  {uploadingSlot === 'exterior' && <p>Uploading exterior image...</p>}
                   {exteriorPhotoUrl.trim() && (
                     <img
                       src={exteriorPhotoUrl}

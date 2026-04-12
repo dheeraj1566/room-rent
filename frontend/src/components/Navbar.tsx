@@ -78,6 +78,9 @@ export default function Navbar() {
               <Link to="/listings" className={`nav-link ${isActive('/listings') ? 'active' : ''}`}>
                 Browse
               </Link>
+              <Link to="/dashboard" className={`nav-link ${isActive('/dashboard') ? 'active' : ''}`}>
+                My Properties
+              </Link>
               <Link to="/add-listing" className="btn btn-primary btn-sm">
                 + Post Property
               </Link>

@@ -1,6 +1,48 @@
 import type { Request, Response, NextFunction } from "express";
 import { GoogleMapsService } from "../services/googleMaps.service";
 import { ListingsService } from "../services/listings.service";
+import { BlobService } from "../services/blob.service.js";
+
+const hasValidCoords = (coords?: { latitude?: number; longitude?: number }): coords is { latitude: number; longitude: number } =>
+  Number.isFinite(coords?.latitude) && Number.isFinite(coords?.longitude);
+
+const resolveFullLocation = async (
+  coords?: { latitude?: number; longitude?: number },
+  address?: string
+) => {
+  if (hasValidCoords(coords)) {
+    try {
+      const parsedAddress = await GoogleMapsService.reverseGeocode(coords.latitude, coords.longitude);
+      return {
+        ...parsedAddress,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      };
+    } catch {
+      // Fallback to forward geocode if address is provided.
+      if (address && address.trim()) {
+        const forwardData = await GoogleMapsService.forwardGeocode(address.trim());
+        return {
+          ...forwardData.parsed,
+          latitude: forwardData.latitude,
+          longitude: forwardData.longitude,
+        };
+      }
+      return null;
+    }
+  }
+
+  if (address && address.trim()) {
+    const forwardData = await GoogleMapsService.forwardGeocode(address.trim());
+    return {
+      ...forwardData.parsed,
+      latitude: forwardData.latitude,
+      longitude: forwardData.longitude,
+    };
+  }
+
+  return null;
+};
 
 export const getAllListings = async (
   req: Request,
@@ -66,6 +108,19 @@ export const getAllListings = async (
       totalPages: Math.ceil(total / limit),
       items,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getLocationOptions = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const items = await ListingsService.getLocationOptions();
+    res.status(200).json({ items });
   } catch (error) {
     next(error);
   }
@@ -200,27 +255,8 @@ export const createSingleListing = async (
       }));
     }
 
-    let fullLocation;
-    if (coords && coords.latitude && coords.longitude) {
-
-      console.log(coords.latitude,coords.longitude);
-      
-      // 1A. Reverse Geocode from coords
-      // const parsedAddress = await GoogleMapsService.reverseGeocode(coords.latitude, coords.longitude);
-      // fullLocation = {
-      //   ...parsedAddress,
-      //   latitude: coords.latitude,
-      //   longitude: coords.longitude,
-      // };
-    } else if (address) {
-      // 1B. Forward Geocode from string
-      const forwardData = await GoogleMapsService.forwardGeocode(address);
-      fullLocation = {
-        ...forwardData.parsed,
-        latitude: forwardData.latitude,
-        longitude: forwardData.longitude,
-      };
-    } else {
+    const fullLocation = await resolveFullLocation(coords, address);
+    if (!fullLocation) {
       res.status(400).json({ error: "Invalid location format" });
       return;
     }
@@ -286,24 +322,8 @@ export const createBulkListings = async (
       return;
     }
 
-    let fullLocation;
-    // 1. Geocode (Only once for all rooms)
-    if (coords && coords.latitude && coords.longitude) {
-         console.log(coords.latitude,coords.longitude);
-      // const parsedAddress = await GoogleMapsService.reverseGeocode(coords.latitude, coords.longitude);
-      // fullLocation = {
-      //   ...parsedAddress,
-      //   latitude: coords.latitude,
-      //   longitude: coords.longitude,
-      // };
-    } else if (address) {
-      const forwardData = await GoogleMapsService.forwardGeocode(address);
-      fullLocation = {
-        ...forwardData.parsed,
-        latitude: forwardData.latitude,
-        longitude: forwardData.longitude,
-      };
-    } else {
+    const fullLocation = await resolveFullLocation(coords, address);
+    if (!fullLocation) {
       res.status(400).json({ error: "Invalid location format" });
       return;
     }
@@ -323,6 +343,379 @@ export const createBulkListings = async (
       message: `${listingIds.length} listings created successfully`,
       listingIds,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createListingsWithMedia = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const landlordId = (req as any).user?.id || req.body.landlordId;
+    if (!landlordId) {
+      res.status(401).json({ error: "Unauthorized / Missing LandlordId" });
+      return;
+    }
+
+    const rawData = req.body?.data;
+    if (typeof rawData !== "string" || !rawData.trim()) {
+      res.status(400).json({ error: "data payload is required" });
+      return;
+    }
+
+    let parsedBody: {
+      location?: { latitude?: number; longitude?: number };
+      address?: string;
+      rooms?: Array<{
+        floorLevelId?: number;
+        maxOccupants?: number;
+        foodPreferenceId?: number;
+        allowSmoking?: boolean;
+        monthlyRent?: number;
+        furnishingTypeId?: number;
+        availableFrom?: string;
+        description?: string;
+        securityDeposit?: number | null;
+        propertyTypeId?: number;
+        foodLevelId?: number;
+        bedType?: "Single" | "Double" | "Mixed";
+        singleBedCount?: number;
+        doubleBedCount?: number;
+      }>;
+      exteriorPhotoUrl?: string;
+      roomPhotoUrls?: string[][];
+    };
+
+    try {
+      parsedBody = JSON.parse(rawData);
+    } catch {
+      res.status(400).json({ error: "Invalid JSON in data payload" });
+      return;
+    }
+
+    const { location: coords, address, rooms, exteriorPhotoUrl, roomPhotoUrls } = parsedBody;
+
+    if (!rooms || !Array.isArray(rooms) || rooms.length === 0) {
+      res.status(400).json({ error: "At least one room is required" });
+      return;
+    }
+
+    const fullLocation = await resolveFullLocation(coords, address);
+    if (!fullLocation) {
+      res.status(400).json({ error: "Location could not be determined" });
+      return;
+    }
+
+    const files = Array.isArray(req.files)
+      ? (req.files as Express.Multer.File[])
+      : [];
+
+    const uploadedByField = new Map<string, { url: string; blobId: string }>();
+    for (const file of files) {
+      if (!file || !file.fieldname) continue;
+      const uploaded = await BlobService.uploadImage(file);
+      uploadedByField.set(file.fieldname, {
+        url: uploaded.accessUrl,
+        blobId: uploaded.blobId,
+      });
+    }
+
+    const listingIds: string[] = [];
+
+    for (let roomIndex = 0; roomIndex < rooms.length; roomIndex += 1) {
+      const room = rooms[roomIndex];
+      if (!room) continue;
+
+      const photos: Array<{
+        photoType: "Room" | "Exterior";
+        photoUrl: string;
+        blobId?: string;
+        displayOrder?: number;
+      }> = [];
+
+      const uploadedExterior = uploadedByField.get("exteriorFile");
+      const normalizedExteriorUrl = (exteriorPhotoUrl || "").trim();
+
+      if (uploadedExterior) {
+        photos.push({
+          photoType: "Exterior",
+          photoUrl: uploadedExterior.url,
+          blobId: uploadedExterior.blobId,
+        });
+      } else if (normalizedExteriorUrl) {
+        photos.push({
+          photoType: "Exterior",
+          photoUrl: normalizedExteriorUrl,
+        });
+      }
+
+      const roomUrls = roomPhotoUrls?.[roomIndex] || [];
+      for (let imageIndex = 0; imageIndex < roomUrls.length; imageIndex += 1) {
+        const uploadedRoom = uploadedByField.get(`roomFile-${roomIndex}-${imageIndex}`);
+        const manualRoomUrl = (roomUrls[imageIndex] || "").trim();
+
+        if (uploadedRoom) {
+          photos.push({
+            photoType: "Room",
+            photoUrl: uploadedRoom.url,
+            blobId: uploadedRoom.blobId,
+            displayOrder: photos.length + 1,
+          });
+          continue;
+        }
+
+        if (!manualRoomUrl) continue;
+        photos.push({
+          photoType: "Room",
+          photoUrl: manualRoomUrl,
+          displayOrder: photos.length + 1,
+        });
+      }
+
+      const listingId = await ListingsService.createSingleListing({
+        landlordId,
+        roomDetails: {
+          floorLevelId: room.floorLevelId as number,
+          maxOccupants: room.maxOccupants as number,
+          foodPreferenceId: room.foodPreferenceId as number,
+          allowSmoking: room.allowSmoking as boolean,
+          monthlyRent: room.monthlyRent as number,
+          furnishingTypeId: room.furnishingTypeId as number,
+          availableFrom: room.availableFrom as string,
+          description: room.description,
+          securityDeposit: room.securityDeposit,
+          propertyTypeId: room.propertyTypeId,
+          foodLevelId: room.foodLevelId,
+          bedType: room.bedType,
+          singleBedCount: room.singleBedCount,
+          doubleBedCount: room.doubleBedCount,
+        },
+        photos,
+        location: fullLocation,
+      });
+
+      listingIds.push(listingId);
+    }
+
+    res.status(201).json({
+      message:
+        listingIds.length === 1
+          ? "Listing created successfully"
+          : `${listingIds.length} listings created successfully`,
+      listingIds,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateListing = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const landlordId = (req as any).user?.id || req.body.landlordId;
+    if (!landlordId) {
+      res.status(401).json({ error: "Unauthorized / Missing LandlordId" });
+      return;
+    }
+
+    let { listingId } = req.params;
+    if (Array.isArray(listingId)) listingId = listingId[0];
+    if (!listingId) {
+      res.status(400).json({ error: "listingId is required" });
+      return;
+    }
+
+    const rawData = req.body?.data;
+    let payload: {
+      location?: { latitude?: number; longitude?: number };
+      address?: string;
+      room?: {
+        floorLevelId?: number;
+        maxOccupants?: number;
+        foodPreferenceId?: number;
+        allowSmoking?: boolean;
+        monthlyRent?: number;
+        furnishingTypeId?: number;
+        availableFrom?: string;
+        description?: string;
+        securityDeposit?: number | null;
+        propertyTypeId?: number;
+        foodLevelId?: number;
+        bedType?: "Single" | "Double" | "Mixed";
+        singleBedCount?: number;
+        doubleBedCount?: number;
+      };
+      photos?: {
+        photoType?: "Room" | "Exterior";
+        photoUrl?: string;
+        blobId?: string;
+        displayOrder?: number;
+      }[];
+      exteriorPhotoUrl?: string;
+      roomPhotoUrls?: string[];
+    };
+
+    if (typeof rawData === "string" && rawData.trim()) {
+      try {
+        payload = JSON.parse(rawData);
+      } catch {
+        res.status(400).json({ error: "Invalid JSON in data payload" });
+        return;
+      }
+    } else {
+      payload = req.body;
+    }
+
+    const { location: coords, address, room, photos, exteriorPhotoUrl, roomPhotoUrls } = payload;
+
+    if (!coords && !address) {
+      res.status(400).json({ error: "Either Location coordinates or an Address string are required" });
+      return;
+    }
+    if (!room) {
+      res.status(400).json({ error: "Room details are required" });
+      return;
+    }
+    if (
+      room.floorLevelId === undefined ||
+      room.maxOccupants === undefined ||
+      room.foodPreferenceId === undefined ||
+      room.allowSmoking === undefined ||
+      room.monthlyRent === undefined ||
+      room.furnishingTypeId === undefined ||
+      !room.availableFrom
+    ) {
+      res.status(400).json({
+        error:
+          "Room must include floorLevelId, maxOccupants, foodPreferenceId, allowSmoking, monthlyRent, furnishingTypeId, and availableFrom",
+      });
+      return;
+    }
+
+    const fullLocation = await resolveFullLocation(coords, address);
+    if (!fullLocation) {
+      res.status(400).json({ error: "Location could not be determined" });
+      return;
+    }
+
+    let typedPhotos:
+      | {
+          photoType: "Room" | "Exterior";
+          photoUrl: string;
+          blobId?: string;
+          displayOrder?: number;
+        }[]
+      | undefined;
+
+    if (Array.isArray(photos)) {
+      typedPhotos = photos
+        .filter((photo) => photo?.photoType && photo?.photoUrl)
+        .map((photo, index) => ({
+          photoType: photo.photoType as "Room" | "Exterior",
+          photoUrl: String(photo.photoUrl),
+          ...(photo.blobId ? { blobId: photo.blobId } : {}),
+          displayOrder: photo.displayOrder ?? index + 1,
+        }));
+    } else {
+      const files = Array.isArray(req.files) ? (req.files as Express.Multer.File[]) : [];
+      const uploadedByField = new Map<string, { url: string; blobId: string }>();
+      for (const file of files) {
+        if (!file?.fieldname) continue;
+        const uploaded = await BlobService.uploadImage(file);
+        uploadedByField.set(file.fieldname, { url: uploaded.accessUrl, blobId: uploaded.blobId });
+      }
+
+      const builtPhotos: {
+        photoType: "Room" | "Exterior";
+        photoUrl: string;
+        blobId?: string;
+        displayOrder?: number;
+      }[] = [];
+
+      const uploadedExterior = uploadedByField.get("exteriorFile");
+      const normalizedExteriorUrl = (exteriorPhotoUrl || "").trim();
+      if (uploadedExterior) {
+        builtPhotos.push({
+          photoType: "Exterior",
+          photoUrl: uploadedExterior.url,
+          blobId: uploadedExterior.blobId,
+        });
+      } else if (normalizedExteriorUrl) {
+        builtPhotos.push({
+          photoType: "Exterior",
+          photoUrl: normalizedExteriorUrl,
+        });
+      }
+
+      const roomUrls = Array.isArray(roomPhotoUrls) ? roomPhotoUrls : [];
+      const roomSlots = Math.max(
+        roomUrls.length,
+        ...[...uploadedByField.keys()]
+          .map((key) => {
+            const match = /^roomFile-(\d+)$/.exec(key);
+            return match ? Number(match[1]) + 1 : 0;
+          })
+          .filter((value) => Number.isFinite(value))
+      );
+
+      for (let idx = 0; idx < roomSlots; idx += 1) {
+        const uploadedRoom = uploadedByField.get(`roomFile-${idx}`);
+        const manualRoomUrl = (roomUrls[idx] || "").trim();
+        if (uploadedRoom) {
+          builtPhotos.push({
+            photoType: "Room",
+            photoUrl: uploadedRoom.url,
+            blobId: uploadedRoom.blobId,
+            displayOrder: builtPhotos.length + 1,
+          });
+          continue;
+        }
+        if (!manualRoomUrl) continue;
+        builtPhotos.push({
+          photoType: "Room",
+          photoUrl: manualRoomUrl,
+          displayOrder: builtPhotos.length + 1,
+        });
+      }
+
+      typedPhotos = builtPhotos;
+    }
+
+    const updated = await ListingsService.updateListingById({
+      landlordId,
+      listingId,
+      roomDetails: {
+        floorLevelId: room.floorLevelId,
+        maxOccupants: room.maxOccupants,
+        foodPreferenceId: room.foodPreferenceId,
+        allowSmoking: room.allowSmoking,
+        monthlyRent: room.monthlyRent,
+        furnishingTypeId: room.furnishingTypeId,
+        availableFrom: room.availableFrom,
+        description: room.description,
+        securityDeposit: room.securityDeposit,
+        propertyTypeId: room.propertyTypeId,
+        foodLevelId: room.foodLevelId,
+        bedType: room.bedType,
+        singleBedCount: room.singleBedCount,
+        doubleBedCount: room.doubleBedCount,
+      },
+      location: fullLocation,
+      ...(typedPhotos ? { photos: typedPhotos } : {}),
+    });
+
+    if (!updated) {
+      res.status(404).json({ error: "Listing not found or you are not allowed to update it" });
+      return;
+    }
+
+    res.status(200).json({ message: "Listing updated successfully" });
   } catch (error) {
     next(error);
   }
