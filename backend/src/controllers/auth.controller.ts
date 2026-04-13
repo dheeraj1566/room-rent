@@ -209,8 +209,6 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         id: user._id,
         email: user.email,
         gender: user.gender ?? null,
-        hasPhoto: false,
-        hasAadhaar: false,
       },
     });
   } catch (error) {
@@ -248,7 +246,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
   try {
     const user = await User.findOne({ email: normalizedEmail });
-    console.log("user", user);
+    // console.log("user", user);
 
     if (!user) {
       res.status(401).json({ error: "Invalid credentials1" });
@@ -278,9 +276,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       message: "Login successful",
       user: {
         id: user._id,
-        email: user.email,
-        hasPhoto: !!(user.photoUrl && user.photoUrl.trim() !== ""),
-        hasAadhaar: !!user.aadhaarHash || !!user.aadhaarEncrypted,
+        email: user.email
       },
     });
   } catch (error) {
@@ -521,11 +517,6 @@ export const googleLogin = async (
           email: existingUser.email,
           // role: existingUser.role,
           gender: existingUser.gender ?? null,
-          hasPhoto: !!(
-            existingUser.photoUrl && existingUser.photoUrl.trim() !== ""
-          ),
-          hasAadhaar:
-            !!existingUser.aadhaarHash || !!existingUser.aadhaarEncrypted,
         },
       });
       return;
@@ -549,8 +540,7 @@ export const googleLogin = async (
         email: createdUser.email,
         // role: createdUser.role,
         gender: createdUser.gender ?? null,
-        hasPhoto: false,
-        hasAadhaar: false,
+        
       },
     });
   } catch (error) {
@@ -578,8 +568,6 @@ export const me = async (req: Request, res: Response): Promise<void> => {
         id: user._id,
         email: user.email ?? null,
         gender: user.gender ?? null,
-        hasPhoto: !!(user.photoUrl && user.photoUrl.trim() !== ""),
-        hasAadhaar: !!user.aadhaarHash || !!user.aadhaarEncrypted,
       },
     });
   } catch (error) {

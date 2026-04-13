@@ -100,6 +100,7 @@ export const getAllListings = async (
           ? req.query.sortBy
           : "newest",
     });
+    console.log("items", items);
 
     const { items, total } = result;
     console.log("[GET /api/listings] total:", total, "| items returned:", items.length);
