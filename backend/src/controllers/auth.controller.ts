@@ -578,8 +578,8 @@ export const me = async (req: Request, res: Response): Promise<void> => {
 export const logout = (_req: Request, res: Response): void => {
   res.clearCookie("jwt", {
     httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: env.COOKIE_SAME_SITE,
+    secure: true,
+    sameSite: env.NODE_ENV === "production" ? "strict" : "none",
   });
   res.status(200).json({ message: "Logged out successfully" });
 };

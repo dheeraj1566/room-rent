@@ -65,12 +65,12 @@ export const env = {
 
   // Auth
   JWT_SECRET: process.env.JWT_SECRET || "default_development_secret_key_change_in_prod",
-  COOKIE_SAME_SITE:
-    (process.env.COOKIE_SAME_SITE?.toLowerCase() === "strict"
-      ? "strict"
-      : process.env.COOKIE_SAME_SITE?.toLowerCase() === "none"
-        ? "none"
-        : "lax") as "lax" | "strict" | "none",
+  // COOKIE_SAME_SITE:
+  //   (process.env.COOKIE_SAME_SITE?.toLowerCase() === "strict"
+  //     ? "strict"
+  //     : process.env.COOKIE_SAME_SITE?.toLowerCase() === "none"
+  //       ? "none"
+  //       : "lax") as "lax" | "strict" | "none",
 } as const;
 
 export default env;
