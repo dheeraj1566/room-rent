@@ -81,7 +81,7 @@ export const getAllListings = async (
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
 
-    const { items, total } = await ListingsService.getAllListings(page, limit, {
+    const result = await ListingsService.getAllListings(page, limit, {
       search: typeof req.query.search === "string" ? req.query.search : undefined,
       city: typeof req.query.city === "string" ? req.query.city : undefined,
       minRent: Number.isFinite(Number(req.query.minRent)) ? Number(req.query.minRent) : undefined,
@@ -100,6 +100,10 @@ export const getAllListings = async (
           ? req.query.sortBy
           : "newest",
     });
+
+    const { items, total } = result;
+    console.log("[GET /api/listings] total:", total, "| items returned:", items.length);
+    console.log("[GET /api/listings] items:", JSON.stringify(items, null, 2));
 
     res.status(200).json({
       page,
