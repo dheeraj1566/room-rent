@@ -248,7 +248,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
   try {
     const user = await User.findOne({ email: normalizedEmail });
-    console.log("user", user);
+    // console.log("user", user);
 
     if (!user) {
       res.status(401).json({ error: "Invalid credentials1" });

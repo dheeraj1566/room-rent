@@ -100,6 +100,7 @@ export const getAllListings = async (
           ? req.query.sortBy
           : "newest",
     });
+    console.log("items", items);
 
     res.status(200).json({
       page,
