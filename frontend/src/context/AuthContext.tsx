@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { apiFetch } from "../lib/api";
+import { apiFetch, clearStoredToken } from "../lib/api";
 
 interface User {
   id: string;
@@ -47,6 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.error("Logout failed", e);
     } finally {
+      clearStoredToken();
       setUser(null);
     }
   };

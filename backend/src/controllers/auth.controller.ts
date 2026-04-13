@@ -115,10 +115,11 @@ const sendAuthCookie = (
 
   const token = jwt.sign({ id, email }, env.JWT_SECRET, { expiresIn: "7d" });
 
+
   res.cookie("jwt", token, {
     httpOnly: true,
     secure: true,
-    sameSite: "strict",
+    sameSite: "none",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 
@@ -201,10 +202,11 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       isVerified: false,
     });
 
-    sendAuthCookie(res, user);
+    const regToken = sendAuthCookie(res, user);
 
     res.status(201).json({
       message: "Registration successful",
+      token: regToken,
       user: {
         id: user._id,
         email: user.email,
@@ -269,10 +271,11 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    sendAuthCookie(res, user);
+    const loginToken = sendAuthCookie(res, user);
 
     res.status(200).json({
       message: "Login successful",
+      token: loginToken,
       user: {
         id: user._id,
         email: user.email
@@ -508,9 +511,10 @@ export const googleLogin = async (
         return;
       }
 
-      sendAuthCookie(res, existingUser);
+      const googleLoginToken = sendAuthCookie(res, existingUser);
       res.status(200).json({
         message: "Google login successful",
+        token: googleLoginToken,
         user: {
           id: existingUser._id,
           email: existingUser.email,
@@ -530,10 +534,11 @@ export const googleLogin = async (
       isVerified: true,
     });
 
-    sendAuthCookie(res, createdUser);
+    const googleSignupToken = sendAuthCookie(res, createdUser);
 
     res.status(201).json({
       message: "Google signup successful",
+      token: googleSignupToken,
       user: {
         id: createdUser._id,
         email: createdUser.email,
