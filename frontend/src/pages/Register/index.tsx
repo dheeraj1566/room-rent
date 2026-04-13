@@ -6,7 +6,7 @@ import brandLogo from "../../assets/Roombaazi Final Logo.png";
 
 export default function Register() {
   const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState<"Tenant" | "Landlord">("Tenant");
+  // const [role, setRole] = useState<"Tenant" | "Landlord">("Tenant");
   const [gender, setGender] = useState<"Male" | "Female">("Male");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
