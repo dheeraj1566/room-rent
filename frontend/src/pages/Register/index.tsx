@@ -3,8 +3,15 @@ import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import brandLogo from "../../assets/Roombaazi Final Logo.png";
 import SiteFooter from "../../components/SiteFooter";
+import Select from "../../components/Select";
 import { useAuth } from "../../context/AuthContext";
 import { apiFetch } from "../../lib/api";
+
+const GENDER_OPTIONS = [
+  { value: "Male", label: "Male" },
+  { value: "Female", label: "Female" },
+  { value: "Other", label: "Other" },
+];
 
 export default function Register() {
   const navigate = useNavigate();
@@ -59,7 +66,7 @@ export default function Register() {
           </div>
 
           <div className="surface-card auth-card">
-            <h1 style={{ fontSize: "2.35rem", textAlign: "center", marginBottom: 8 }}>Create Account</h1>
+            <h1 style={{ fontSize: "clamp(1.85rem, 4.2vw, 2.35rem)", textAlign: "center", marginBottom: 8 }}>Create Account</h1>
             <p style={{ textAlign: "center", marginBottom: 28 }}>Join thousands of renters &amp; owners</p>
 
             {errorMsg ? <div className="error-banner">{errorMsg}</div> : null}
@@ -78,15 +85,12 @@ export default function Register() {
 
               <div className="field" style={{ marginBottom: 18 }}>
                 <label>Gender</label>
-                <select
-                  className="select-style"
+                <Select
                   value={gender}
-                  onChange={(event) => setGender(event.target.value as typeof gender)}
-                >
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
+                  onChange={(next) => setGender(next as typeof gender)}
+                  options={GENDER_OPTIONS}
+                  aria-label="Select gender"
+                />
               </div>
 
               <div className="field" style={{ marginBottom: 18 }}>

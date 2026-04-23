@@ -90,6 +90,7 @@ export const getAllListings = async (
       floorLevelId: parseNumberList(req.query.floorLevelId),
       furnishingTypeId: parseNumberList(req.query.furnishingTypeId),
       foodPreferenceId: parseNumberList(req.query.foodPreferenceId),
+      coolingTypeId: parseNumberList(req.query.coolingTypeId),
       propertyTypeId: parseNumberList(req.query.propertyTypeId),
       gender: parseStringList(req.query.gender),
       allowSmoking: parseBooleanList(req.query.allowSmoking),
@@ -176,6 +177,7 @@ export const createSingleListing = async (
         floorLevelId?: number;
         maxOccupants?: number;
         foodPreferenceId?: number;
+        coolingTypeId?: number;
         allowSmoking?: boolean;
         monthlyRent?: number;
         furnishingTypeId?: number;
@@ -272,6 +274,7 @@ export const createSingleListing = async (
         floorLevelId: room.floorLevelId,
         maxOccupants: room.maxOccupants,
         foodPreferenceId: room.foodPreferenceId,
+        coolingTypeId: room.coolingTypeId,
         allowSmoking: room.allowSmoking,
         monthlyRent: room.monthlyRent,
         furnishingTypeId: room.furnishingTypeId,
@@ -377,6 +380,7 @@ export const createListingsWithMedia = async (
         floorLevelId?: number;
         maxOccupants?: number;
         foodPreferenceId?: number;
+        coolingTypeId?: number;
         allowSmoking?: boolean;
         monthlyRent?: number;
         furnishingTypeId?: number;
@@ -486,6 +490,7 @@ export const createListingsWithMedia = async (
           floorLevelId: room.floorLevelId as number,
           maxOccupants: room.maxOccupants as number,
           foodPreferenceId: room.foodPreferenceId as number,
+          coolingTypeId: room.coolingTypeId,
           allowSmoking: room.allowSmoking as boolean,
           monthlyRent: room.monthlyRent as number,
           furnishingTypeId: room.furnishingTypeId as number,
@@ -545,6 +550,7 @@ export const updateListing = async (
         floorLevelId?: number;
         maxOccupants?: number;
         foodPreferenceId?: number;
+        coolingTypeId?: number;
         allowSmoking?: boolean;
         monthlyRent?: number;
         furnishingTypeId?: number;
@@ -700,6 +706,7 @@ export const updateListing = async (
         floorLevelId: room.floorLevelId,
         maxOccupants: room.maxOccupants,
         foodPreferenceId: room.foodPreferenceId,
+        coolingTypeId: room.coolingTypeId,
         allowSmoking: room.allowSmoking,
         monthlyRent: room.monthlyRent,
         furnishingTypeId: room.furnishingTypeId,

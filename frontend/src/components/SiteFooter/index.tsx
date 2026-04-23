@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Home } from "lucide-react";
-import brandLogo from "../assets/Roombaazi Final Logo.png";
+import brandLogo from "../../assets/Roombaazi Final Logo.png";
 
 export default function SiteFooter() {
   return (

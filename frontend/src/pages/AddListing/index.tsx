@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Check, ImageUp, MapPin, Plus, Trash2 } from "luc
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import SiteFooter from "../../components/SiteFooter";
+import Select from "../../components/Select";
 import { ApiError, apiFetch } from "../../lib/api";
 import { forwardGeocode } from "../../lib/googleMaps";
 import { useToast } from "../../context/ToastContext";
@@ -18,8 +19,14 @@ type RoomForm = {
   floorLevelId: number | "";
   maxOccupants: number | "";
   monthlyRent: number | "";
+  rentPerPerson: number | "";
   furnishingTypeId: number | "";
   foodPreferenceId: number | "";
+  foodLevelId: number | "";
+  coolingTypeId: number | "";
+  bedType: "Single" | "Double" | "Mixed" | "";
+  securityDepositType: "none" | "one_month" | "two_month" | "custom" | "";
+  securityDepositAmount: number | "";
   availableFrom: string;
   description: string;
   allowSmoking: boolean;
@@ -27,14 +34,77 @@ type RoomForm = {
   roomImagePreviews: string[];
 };
 
+const PROPERTY_TYPE_OPTIONS = [
+  { value: "1", label: "PG" },
+  { value: "2", label: "Individual" },
+  { value: "3", label: "Flat" },
+];
+
+const FLOOR_LEVEL_OPTIONS = [
+  { value: "1", label: "Ground Floor" },
+  { value: "2", label: "1st Floor" },
+  { value: "3", label: "2nd Floor" },
+  { value: "4", label: "3rd Floor" },
+];
+
+const MAX_OCCUPANTS_OPTIONS = [
+  { value: "1", label: "1 occupant" },
+  { value: "2", label: "2 occupants" },
+  { value: "3", label: "3 occupants" },
+  { value: "4", label: "4 occupants" },
+];
+
+const FURNISHING_OPTIONS = [
+  { value: "3", label: "Furnished" },
+  { value: "2", label: "Semi-Furnished" },
+  { value: "1", label: "Unfurnished" },
+];
+
+const FOOD_PREFERENCE_OPTIONS = [
+  { value: "1", label: "Veg Only" },
+  { value: "2", label: "Non-Veg Allowed" },
+  { value: "3", label: "No Restriction" },
+];
+
+const FOOD_LEVEL_OPTIONS = [
+  { value: "1", label: "Level 1" },
+  { value: "2", label: "Level 2" },
+  { value: "3", label: "Level 3" },
+];
+
+const COOLING_OPTIONS = [
+  { value: "1", label: "AC" },
+  { value: "2", label: "Non-AC" },
+  { value: "3", label: "Cooler" },
+];
+
+const BED_TYPE_OPTIONS = [
+  { value: "Single", label: "Single" },
+  { value: "Double", label: "Double" },
+  { value: "Mixed", label: "Mixed" },
+];
+
+const SECURITY_DEPOSIT_TYPE_OPTIONS = [
+  { value: "none", label: "No deposit" },
+  { value: "one_month", label: "1 month rent" },
+  { value: "two_month", label: "2 months rent" },
+  { value: "custom", label: "Custom amount" },
+];
+
 const createRoom = (): RoomForm => ({
   id: crypto.randomUUID(),
   propertyTypeId: "",
   floorLevelId: "",
   maxOccupants: "",
   monthlyRent: "",
+  rentPerPerson: "",
   furnishingTypeId: "",
   foodPreferenceId: "",
+  foodLevelId: "",
+  coolingTypeId: "",
+  bedType: "",
+  securityDepositType: "",
+  securityDepositAmount: "",
   availableFrom: "",
   description: "",
   allowSmoking: false,
@@ -82,6 +152,16 @@ export default function AddListing() {
     [area, locationOptions],
   );
 
+  const areaSelectOptions = useMemo(
+    () => areaOptions.map((option) => ({ value: option, label: option })),
+    [areaOptions],
+  );
+
+  const colonySelectOptions = useMemo(
+    () => colonyOptions.map((option) => ({ value: option, label: option })),
+    [colonyOptions],
+  );
+
   const composedAddress = useMemo(() => {
     return [houseNo, landmark, colony, area, pincode, "Jaipur", "Rajasthan", "India"]
       .map((item) => item.trim())
@@ -90,7 +170,22 @@ export default function AddListing() {
   }, [area, colony, houseNo, landmark, pincode]);
 
   const updateRoom = (roomId: string, patch: Partial<RoomForm>) => {
-    setRooms((prev) => prev.map((room) => (room.id === roomId ? { ...room, ...patch } : room)));
+    setRooms((prev) => prev.map((room) => {
+      if (room.id !== roomId) return room;
+      
+      const updated = { ...room, ...patch };
+      
+      // Auto-calculate monthly rent when occupants or per-person rate changes
+      if (patch.maxOccupants !== undefined || patch.rentPerPerson !== undefined) {
+        const occupants = Number(updated.maxOccupants) || 0;
+        const perPersonRate = Number(updated.rentPerPerson) || 0;
+        if (occupants > 0 && perPersonRate > 0) {
+          updated.monthlyRent = occupants * perPersonRate;
+        }
+      }
+      
+      return updated;
+    }));
   };
 
   const handleStepOne = async () => {
@@ -124,13 +219,22 @@ export default function AddListing() {
 
   const validateRooms = () => {
     for (const room of rooms) {
+      const isPG = Number(room.propertyTypeId) === 1;
+      const isIndividual = Number(room.propertyTypeId) === 2;
+      const isFlat = Number(room.propertyTypeId) === 3;
+      const needsAdvanced = isPG || isIndividual || isFlat;
       if (
         room.propertyTypeId === "" ||
         room.floorLevelId === "" ||
         room.maxOccupants === "" ||
-        room.monthlyRent === "" ||
+        room.rentPerPerson === "" ||
         room.furnishingTypeId === "" ||
         room.foodPreferenceId === "" ||
+        room.coolingTypeId === "" ||
+        ((isPG || isFlat) && room.foodLevelId === "") ||
+        (needsAdvanced && room.bedType === "") ||
+        (needsAdvanced && room.securityDepositType === "") ||
+        (needsAdvanced && room.securityDepositType === "custom" && room.securityDepositAmount === "") ||
         !room.availableFrom ||
         !room.description.trim()
       ) {
@@ -164,20 +268,52 @@ export default function AddListing() {
         exteriorPhotoUrl: "",
         roomPhotoUrls: rooms.map((room) => room.roomImagePreviews.map(() => "")),
         rooms: rooms.map((room) => ({
+          ...(Number(room.propertyTypeId) === 1 || Number(room.propertyTypeId) === 2 || Number(room.propertyTypeId) === 3
+            ? (() => {
+                const monthly = Number(room.monthlyRent) || 0;
+                const depositType = room.securityDepositType;
+                const deposit =
+                  depositType === "none"
+                    ? 0
+                    : depositType === "one_month"
+                      ? monthly
+                    : depositType === "two_month"
+                      ? monthly * 2
+                      : room.securityDepositAmount === ""
+                        ? null
+                        : Number(room.securityDepositAmount);
+
+                const bedType = room.bedType || (Number(room.maxOccupants) > 1 ? "Double" : "Single");
+                const beds =
+                  bedType === "Single"
+                    ? { singleBedCount: 1, doubleBedCount: 0 }
+                    : bedType === "Double"
+                      ? { singleBedCount: 0, doubleBedCount: 1 }
+                      : { singleBedCount: 1, doubleBedCount: 1 };
+
+                return {
+                  bedType,
+                  securityDeposit: deposit,
+                  ...beds,
+                };
+              })()
+            : {
+                securityDeposit: null,
+                bedType: Number(room.maxOccupants) > 1 ? "Double" : "Single",
+                singleBedCount: Number(room.maxOccupants) === 1 ? 1 : 0,
+                doubleBedCount: Number(room.maxOccupants) > 1 ? 1 : 0,
+              }),
           propertyTypeId: Number(room.propertyTypeId),
           floorLevelId: Number(room.floorLevelId),
           maxOccupants: Number(room.maxOccupants),
           monthlyRent: Number(room.monthlyRent),
           furnishingTypeId: Number(room.furnishingTypeId),
           foodPreferenceId: Number(room.foodPreferenceId),
+          foodLevelId: Number(room.foodLevelId) || 1,
+          coolingTypeId: Number(room.coolingTypeId),
           availableFrom: room.availableFrom,
           description: room.description.trim(),
           allowSmoking: room.allowSmoking,
-          securityDeposit: null,
-          foodLevelId: 1,
-          bedType: Number(room.maxOccupants) > 1 ? "Double" : "Single",
-          singleBedCount: Number(room.maxOccupants) === 1 ? 1 : 0,
-          doubleBedCount: Number(room.maxOccupants) > 1 ? 1 : 0,
           rentTiers: [],
         })),
       };
@@ -219,7 +355,7 @@ export default function AddListing() {
         <section className="hero-panel hero-gradient">
           <div className="page-container" style={{ padding: "46px 0 56px" }}>
             <div style={{ textAlign: "center" }}>
-              <h1 style={{ fontSize: "3.4rem", lineHeight: 1.06, marginBottom: 10 }}>Post Your Property</h1>
+              <h1 style={{ fontSize: "clamp(2.1rem, 5vw, 3.4rem)", lineHeight: 1.06, marginBottom: 10 }}>Post Your Property</h1>
               <p className="section-subtitle">
                 {step === 1 && "Tell us where your property is located"}
                 {step === 2 && "Tell us about your property details"}
@@ -243,7 +379,7 @@ export default function AddListing() {
                     <MapPin size={20} />
                   </div>
                   <div>
-                    <h2 style={{ fontSize: "2rem", marginBottom: 4 }}>Where is your property located?</h2>
+                    <h2 style={{ fontSize: "clamp(1.45rem, 3.2vw, 2rem)", marginBottom: 4 }}>Where is your property located?</h2>
                     <p>We'll precisely pinpoint your location to help tenants find you easily.</p>
                   </div>
                 </div>
@@ -259,32 +395,27 @@ export default function AddListing() {
                   </div>
                   <div className="field">
                     <label>Area *</label>
-                    <select
-                      className="select-style"
+                    <Select
                       value={area}
-                      onChange={(e) => {
-                        setArea(e.target.value);
+                      onChange={(next) => {
+                        setArea(next);
                         setColony("");
                       }}
-                    >
-                      <option value="">Select area</option>
-                      {areaOptions.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
+                      options={areaSelectOptions}
+                      placeholder="Select area"
+                      aria-label="Select area"
+                    />
                   </div>
                   <div className="field">
                     <label>Colony *</label>
-                    <select className="select-style" value={colony} onChange={(e) => setColony(e.target.value)} disabled={!area}>
-                      <option value="">{area ? "Select colony" : "Select area first"}</option>
-                      {colonyOptions.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
+                    <Select
+                      value={colony}
+                      onChange={(next) => setColony(next)}
+                      options={colonySelectOptions}
+                      placeholder={area ? "Select colony" : "Select area first"}
+                      aria-label="Select colony"
+                      disabled={!area}
+                    />
                   </div>
                   <div className="field" style={{ gridColumn: "1 / -1" }}>
                     <label>Pincode *</label>
@@ -311,7 +442,7 @@ export default function AddListing() {
             {step === 2 ? (
               <div style={{ width: "min(980px, 100%)", margin: "0 auto" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
-                  <h2 style={{ fontSize: "2rem" }}>Room Details</h2>
+                  <h2 style={{ fontSize: "clamp(1.45rem, 3.2vw, 2rem)" }}>Room Details</h2>
                   <button className="btn btn-outline" onClick={() => setRooms((prev) => [...prev, createRoom()])}>
                     <Plus size={18} />
                     Add Another Room
@@ -331,87 +462,189 @@ export default function AddListing() {
                     </div>
 
                     <div className="field-grid-2">
+                      {(() => {
+                        const isPG = Number(room.propertyTypeId) === 1;
+                        const isIndividual = Number(room.propertyTypeId) === 2;
+                        const isFlat = Number(room.propertyTypeId) === 3;
+                        const needsAdvanced = isPG || isIndividual || isFlat;
+                        const monthly = Number(room.monthlyRent) || 0;
+                        const depositPreview =
+                          room.securityDepositType === "none"
+                            ? 0
+                            : room.securityDepositType === "one_month"
+                              ? monthly
+                              : room.securityDepositType === "two_month"
+                                ? monthly * 2
+                                : room.securityDepositAmount === ""
+                                  ? 0
+                                  : Number(room.securityDepositAmount);
+
+                        return (
+                          <>
                       <div className="field">
                         <label>Property Type *</label>
-                        <select
-                          className="select-style"
-                          value={room.propertyTypeId}
-                          onChange={(e) => updateRoom(room.id, { propertyTypeId: e.target.value ? Number(e.target.value) : "" })}
-                        >
-                          <option value="">Select property type</option>
-                          <option value="1">PG</option>
-                          <option value="2">Independent Room</option>
-                          <option value="3">Flat</option>
-                        </select>
-                      </div>
-
-                      <div className="field">
-                        <label>Floor Level *</label>
-                        <select
-                          className="select-style"
-                          value={room.floorLevelId}
-                          onChange={(e) => updateRoom(room.id, { floorLevelId: e.target.value ? Number(e.target.value) : "" })}
-                        >
-                          <option value="">Select floor</option>
-                          <option value="1">Ground Floor</option>
-                          <option value="2">1st Floor</option>
-                          <option value="3">2nd Floor</option>
-                          <option value="4">3rd Floor</option>
-                        </select>
-                      </div>
-
-                      <div className="field">
-                        <label>Max Occupants *</label>
-                        <select
-                          className="select-style"
-                          value={room.maxOccupants}
-                          onChange={(e) => updateRoom(room.id, { maxOccupants: e.target.value ? Number(e.target.value) : "" })}
-                        >
-                          <option value="">Select max occupants</option>
-                          <option value="1">1 occupant</option>
-                          <option value="2">2 occupants</option>
-                          <option value="3">3 occupants</option>
-                          <option value="4">4 occupants</option>
-                        </select>
-                      </div>
-
-                      <div className="field">
-                        <label>Monthly Rent (₹) *</label>
-                        <input
-                          className="input-style"
-                          value={room.monthlyRent}
-                          onChange={(e) => updateRoom(room.id, { monthlyRent: e.target.value ? Number(e.target.value.replace(/\D/g, "")) : "" })}
-                          placeholder="e.g. 8000"
+                        <Select
+                          value={room.propertyTypeId === "" ? "" : String(room.propertyTypeId)}
+                          onChange={(next) =>
+                            updateRoom(room.id, {
+                              propertyTypeId: next ? Number(next) : "",
+                              ...(next !== "1" && next !== "2" && next !== "3"
+                                ? { bedType: "", securityDepositType: "", securityDepositAmount: "", foodLevelId: "" }
+                                : {}),
+                            })
+                          }
+                          options={PROPERTY_TYPE_OPTIONS}
+                          placeholder="Select property type"
+                          aria-label="Property type"
                         />
                       </div>
 
                       <div className="field">
-                        <label>Furnishing *</label>
-                        <select
-                          className="select-style"
-                          value={room.furnishingTypeId}
-                          onChange={(e) => updateRoom(room.id, { furnishingTypeId: e.target.value ? Number(e.target.value) : "" })}
-                        >
-                          <option value="">Select furnishing</option>
-                          <option value="3">Furnished</option>
-                          <option value="2">Semi-Furnished</option>
-                          <option value="1">Unfurnished</option>
-                        </select>
+                        <label>Floor Level *</label>
+                        <Select
+                          value={room.floorLevelId === "" ? "" : String(room.floorLevelId)}
+                          onChange={(next) => updateRoom(room.id, { floorLevelId: next ? Number(next) : "" })}
+                          options={FLOOR_LEVEL_OPTIONS}
+                          placeholder="Select floor"
+                          aria-label="Floor level"
+                        />
                       </div>
 
                       <div className="field">
-                        <label>Food Preference *</label>
-                        <select
-                          className="select-style"
-                          value={room.foodPreferenceId}
-                          onChange={(e) => updateRoom(room.id, { foodPreferenceId: e.target.value ? Number(e.target.value) : "" })}
-                        >
-                          <option value="">Select food preference</option>
-                          <option value="1">Veg Only</option>
-                          <option value="2">Non-Veg Allowed</option>
-                          <option value="3">No Restriction</option>
-                        </select>
+                        <label>Max Occupants *</label>
+                        <Select
+                          value={room.maxOccupants === "" ? "" : String(room.maxOccupants)}
+                          onChange={(next) => updateRoom(room.id, { maxOccupants: next ? Number(next) : "" })}
+                          options={MAX_OCCUPANTS_OPTIONS}
+                          placeholder="Select max occupants"
+                          aria-label="Max occupants"
+                        />
                       </div>
+
+                      <div className="field">
+                        <label>Rent per Person (₹) *</label>
+                        <input
+                          className="input-style"
+                          value={room.rentPerPerson}
+                          onChange={(e) => updateRoom(room.id, { rentPerPerson: e.target.value ? Number(e.target.value.replace(/\D/g, "")) : "" })}
+                          placeholder="e.g. 8000"
+                        />
+                        {room.maxOccupants && room.rentPerPerson ? (
+                          <span className="field-note" style={{ color: "var(--green-600)", fontWeight: 600 }}>
+                            Total Monthly Rent: ₹{(Number(room.maxOccupants) * Number(room.rentPerPerson)).toLocaleString("en-IN")}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <div className="field">
+                        <label>Furnishing *</label>
+                        <Select
+                          value={room.furnishingTypeId === "" ? "" : String(room.furnishingTypeId)}
+                          onChange={(next) => updateRoom(room.id, { furnishingTypeId: next ? Number(next) : "" })}
+                          options={FURNISHING_OPTIONS}
+                          placeholder="Select furnishing"
+                          aria-label="Furnishing"
+                        />
+                      </div>
+
+                      {isPG || isFlat ? (
+                        <div className="field">
+                          <label>Food Level *</label>
+                          <Select
+                            value={room.foodLevelId === "" ? "" : String(room.foodLevelId)}
+                            onChange={(next) => updateRoom(room.id, { foodLevelId: next ? Number(next) : "" })}
+                            options={FOOD_LEVEL_OPTIONS}
+                            placeholder="Select food level"
+                            aria-label="Food level"
+                          />
+                        </div>
+                      ) : null}
+
+                      {needsAdvanced ? (
+                        <div className="field">
+                          <label>Bed Type *</label>
+                          <Select
+                            value={room.bedType}
+                            onChange={(next) => updateRoom(room.id, { bedType: next as RoomForm["bedType"] })}
+                            options={BED_TYPE_OPTIONS}
+                            placeholder="Select bed type"
+                            aria-label="Bed type"
+                          />
+                        </div>
+                      ) : null}
+
+                      <div className="field">
+                        <label>Food Preference *</label>
+                        <Select
+                          value={room.foodPreferenceId === "" ? "" : String(room.foodPreferenceId)}
+                          onChange={(next) => updateRoom(room.id, { foodPreferenceId: next ? Number(next) : "" })}
+                          options={FOOD_PREFERENCE_OPTIONS}
+                          placeholder="Select food preference"
+                          aria-label="Food preference"
+                        />
+                      </div>
+
+                      <div className="field">
+                        <label>Cooling Type *</label>
+                        <Select
+                          value={room.coolingTypeId === "" ? "" : String(room.coolingTypeId)}
+                          onChange={(next) => updateRoom(room.id, { coolingTypeId: next ? Number(next) : "" })}
+                          options={COOLING_OPTIONS}
+                          placeholder="Select cooling type"
+                          aria-label="Cooling type"
+                        />
+                      </div>
+
+                      {needsAdvanced ? (
+                        <div className="field" style={{ gridColumn: "1 / -1" }}>
+                          <label>Security Deposit (₹) *</label>
+                          <div className="field-grid-2" style={{ gap: 12 }}>
+                            <div className="field" style={{ gap: 8 }}>
+                              <Select
+                                value={room.securityDepositType}
+                                onChange={(next) =>
+                                  updateRoom(room.id, {
+                                    securityDepositType: next as RoomForm["securityDepositType"],
+                                    ...(next !== "custom" ? { securityDepositAmount: "" } : {}),
+                                  })
+                                }
+                                options={SECURITY_DEPOSIT_TYPE_OPTIONS}
+                                placeholder="Select deposit type"
+                                aria-label="Security deposit type"
+                              />
+                              {room.securityDepositType && room.securityDepositType !== "custom" ? (
+                                <span className="field-note">Deposit: ₹{depositPreview.toLocaleString("en-IN")}</span>
+                              ) : null}
+                            </div>
+
+                            {room.securityDepositType === "custom" ? (
+                              <div className="field" style={{ gap: 8 }}>
+                                <input
+                                  className="input-style"
+                                  value={room.securityDepositAmount}
+                                  onChange={(e) =>
+                                    updateRoom(room.id, {
+                                      securityDepositAmount: e.target.value ? Number(e.target.value.replace(/\D/g, "")) : "",
+                                    })
+                                  }
+                                  placeholder="Enter deposit amount"
+                                />
+                                <span className="field-note">Enter a fixed deposit amount in ₹.</span>
+                              </div>
+                            ) : (
+                              <div className="field" style={{ gap: 8 }}>
+                                <input
+                                  className="input-style"
+                                  value={depositPreview ? `₹${depositPreview.toLocaleString("en-IN")}` : ""}
+                                  placeholder="Deposit amount"
+                                  disabled
+                                />
+                                <span className="field-note">Auto-calculated from monthly rent.</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
 
                       <div className="field">
                         <label>Available From *</label>
@@ -420,6 +653,7 @@ export default function AddListing() {
                           type="date"
                           value={room.availableFrom}
                           onChange={(e) => updateRoom(room.id, { availableFrom: e.target.value })}
+                          placeholder="dd/mm/yyyy"
                         />
                       </div>
 
@@ -490,6 +724,9 @@ export default function AddListing() {
                           ))}
                         </div>
                       </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 ))}

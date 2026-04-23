@@ -7,11 +7,13 @@ import {
   FURNISHING_TYPES,
   FOOD_PREFERENCES,
   PROPERTY_TYPES,
+  COOLING_TYPES,
   LISTING_STATUSES_BY_NAME,
   FLOOR_LEVELS_BY_NAME,
   FURNISHING_TYPES_BY_NAME,
   FOOD_PREFERENCES_BY_NAME,
   PROPERTY_TYPES_BY_NAME,
+  COOLING_TYPES_BY_NAME,
   resolveLookup,
 } from "../constants/lookups.js";
 
@@ -24,6 +26,7 @@ export interface CreateListingDto {
     allowSmoking: boolean;
     monthlyRent: number;
     furnishingTypeId: number;
+    coolingTypeId?: number;
     availableFrom: string;
     description?: string;
     securityDeposit?: number | null;
@@ -69,11 +72,13 @@ export interface ListingItem {
   maxOccupants: number;
   allowSmoking: boolean;
   foodPreferenceId: number;
+  coolingTypeId: number | null;
   propertyTypeId: number | null;
   availableFrom: string;
   floorName: string;
   furnishingName: string;
   preferenceName: string;
+  coolingTypeName: string | null;
   propertyTypeName: string | null;
   statusId: number;
   statusName: string;
@@ -102,6 +107,8 @@ export interface ListingDetailsItem {
   allowSmoking: boolean;
   foodPreferenceId: number;
   preferenceName: string;
+  coolingTypeId: number | null;
+  coolingTypeName: string | null;
   propertyTypeId: number | null;
   propertyTypeName: string | null;
   monthlyRent: number;
@@ -137,6 +144,7 @@ export interface ListingFilters {
   floorLevelId?: number[];
   furnishingTypeId?: number[];
   foodPreferenceId?: number[];
+  coolingTypeId?: number[];
   propertyTypeId?: number[];
   gender?: string[];
   allowSmoking?: boolean[];
@@ -170,11 +178,13 @@ export class ListingsService {
       maxOccupants: doc.maxOccupants,
       allowSmoking: doc.allowSmoking,
       foodPreferenceId: FOOD_PREFERENCES_BY_NAME[doc.foodPreference] ?? 0,
+      coolingTypeId: doc.coolingType ? (COOLING_TYPES_BY_NAME[doc.coolingType] ?? null) : null,
       propertyTypeId: doc.propertyType ? (PROPERTY_TYPES_BY_NAME[doc.propertyType] ?? null) : null,
       availableFrom: doc.availableFrom?.toISOString().split("T")[0] ?? "",
       floorName: doc.floorLevel,
       furnishingName: doc.furnishingType,
       preferenceName: doc.foodPreference,
+      coolingTypeName: doc.coolingType ?? null,
       propertyTypeName: doc.propertyType ?? null,
       statusId: LISTING_STATUSES_BY_NAME[doc.status] ?? 1,
       statusName: doc.status,
@@ -245,6 +255,9 @@ export class ListingsService {
       maxOccupants: data.roomDetails.maxOccupants,
       allowSmoking: data.roomDetails.allowSmoking,
       foodPreference: resolveLookup(FOOD_PREFERENCES, data.roomDetails.foodPreferenceId) ?? "No Restriction",
+      coolingType: data.roomDetails.coolingTypeId
+        ? (resolveLookup(COOLING_TYPES, data.roomDetails.coolingTypeId) ?? undefined)
+        : undefined,
       propertyType: data.roomDetails.propertyTypeId
         ? (resolveLookup(PROPERTY_TYPES, data.roomDetails.propertyTypeId) ?? undefined)
         : undefined,
@@ -320,6 +333,9 @@ export class ListingsService {
         maxOccupants: room.maxOccupants,
         allowSmoking: room.allowSmoking,
         foodPreference: resolveLookup(FOOD_PREFERENCES, room.foodPreferenceId) ?? "No Restriction",
+        coolingType: room.coolingTypeId
+          ? (resolveLookup(COOLING_TYPES, room.coolingTypeId) ?? undefined)
+          : undefined,
         propertyType: room.propertyTypeId
           ? (resolveLookup(PROPERTY_TYPES, room.propertyTypeId) ?? undefined)
           : undefined,
@@ -364,6 +380,9 @@ export class ListingsService {
       maxOccupants: data.roomDetails.maxOccupants,
       allowSmoking: data.roomDetails.allowSmoking,
       foodPreference: resolveLookup(FOOD_PREFERENCES, data.roomDetails.foodPreferenceId) ?? "No Restriction",
+      coolingType: data.roomDetails.coolingTypeId
+        ? (resolveLookup(COOLING_TYPES, data.roomDetails.coolingTypeId) ?? undefined)
+        : null,
       propertyType: data.roomDetails.propertyTypeId
         ? (resolveLookup(PROPERTY_TYPES, data.roomDetails.propertyTypeId) ?? undefined)
         : undefined,
@@ -460,6 +479,7 @@ export class ListingsService {
             { floorLevel: { $regex: keyword, $options: "i" } },
             { furnishingType: { $regex: keyword, $options: "i" } },
             { foodPreference: { $regex: keyword, $options: "i" } },
+            { coolingType: { $regex: keyword, $options: "i" } },
           ],
         }));
         query.$and = regexConditions;
@@ -501,6 +521,13 @@ export class ListingsService {
         .map((id) => resolveLookup(FOOD_PREFERENCES, id))
         .filter(Boolean);
       if (foodNames.length > 0) query.foodPreference = { $in: foodNames };
+    }
+
+    if (filters.coolingTypeId && filters.coolingTypeId.length > 0) {
+      const coolingNames = filters.coolingTypeId
+        .map((id) => resolveLookup(COOLING_TYPES, id))
+        .filter(Boolean);
+      if (coolingNames.length > 0) query.coolingType = { $in: coolingNames };
     }
 
     if (filters.propertyTypeId && filters.propertyTypeId.length > 0) {
@@ -570,6 +597,9 @@ export class ListingsService {
         maxOccupants: listing.maxOccupants,
         allowSmoking: listing.allowSmoking,
         foodPreferenceId: FOOD_PREFERENCES_BY_NAME[listing.foodPreference] ?? 0,
+        coolingTypeId: listing.coolingType
+          ? (COOLING_TYPES_BY_NAME[listing.coolingType] ?? null)
+          : null,
         propertyTypeId: listing.propertyType
           ? (PROPERTY_TYPES_BY_NAME[listing.propertyType] ?? null)
           : null,
@@ -577,6 +607,7 @@ export class ListingsService {
         floorName: listing.floorLevel,
         furnishingName: listing.furnishingType,
         preferenceName: listing.foodPreference,
+        coolingTypeName: listing.coolingType ?? null,
         propertyTypeName: listing.propertyType ?? null,
         statusId: LISTING_STATUSES_BY_NAME[listing.status] ?? 1,
         statusName: listing.status,
@@ -627,6 +658,10 @@ export class ListingsService {
       allowSmoking: listing.allowSmoking,
       foodPreferenceId: FOOD_PREFERENCES_BY_NAME[listing.foodPreference] ?? 0,
       preferenceName: listing.foodPreference,
+      coolingTypeId: listing.coolingType
+        ? (COOLING_TYPES_BY_NAME[listing.coolingType] ?? null)
+        : null,
+      coolingTypeName: listing.coolingType ?? null,
       propertyTypeId: listing.propertyType
         ? (PROPERTY_TYPES_BY_NAME[listing.propertyType] ?? null)
         : null,

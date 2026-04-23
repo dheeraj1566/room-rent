@@ -4,7 +4,10 @@ type FilterState = {
   maxRent: number;
   maxOccupants: number[];
   furnishingTypeId: number[];
+  foodPreferenceId: number[];
+  coolingTypeId: number[];
   propertyTypeId: number[];
+  gender: ("Male" | "Female" | "Other")[];
   sortBy: "newest" | "rent_asc" | "rent_desc";
 };
 
@@ -27,6 +30,20 @@ const occupantOptions = [
   { value: 3, label: "3+" },
   { value: 4, label: "Family" },
 ];
+
+const foodPreferenceOptions = [
+  { id: 1, name: "Veg Only" },
+  { id: 2, name: "Non-Veg Allowed" },
+  { id: 3, name: "No Restriction" },
+];
+
+const coolingOptions = [
+  { id: 1, name: "AC" },
+  { id: 2, name: "Non-AC" },
+  { id: 3, name: "Cooler" },
+];
+
+const roomForOptions: ("Male" | "Female" | "Other")[] = ["Male", "Female", "Other"];
 
 export default function FilterSidebar({
   filters,
@@ -116,7 +133,7 @@ export default function FilterSidebar({
           {[
             { id: 1, name: "PG" },
             { id: 3, name: "Flat" },
-            { id: 2, name: "Independent Room" },
+            { id: 2, name: "Individual" },
           ].map((item) => (
             <label key={item.id} className="checkbox-item">
               <input
@@ -157,6 +174,78 @@ export default function FilterSidebar({
               <span>{item.name}</span>
             </label>
           ))}
+        </div>
+      </div>
+
+      <div className="filter-section">
+        <span className="filter-label">Food Preference</span>
+        <div className="checkbox-stack">
+          {foodPreferenceOptions.map((item) => {
+            const isActive = filters.foodPreferenceId.includes(item.id);
+            return (
+              <label key={item.id} className={`checkbox-item checkbox-item-card ${isActive ? "active" : ""}`}>
+                <input
+                  type="checkbox"
+                  checked={isActive}
+                  onChange={() =>
+                    onFilterChange({
+                      ...filters,
+                      foodPreferenceId: toggleExclusive(filters.foodPreferenceId, item.id),
+                    })
+                  }
+                />
+                <span>{item.name}</span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="filter-section">
+        <span className="filter-label">Cooling</span>
+        <div className="checkbox-stack">
+          {coolingOptions.map((item) => {
+            const isActive = filters.coolingTypeId.includes(item.id);
+            return (
+              <label key={item.id} className={`checkbox-item checkbox-item-card ${isActive ? "active" : ""}`}>
+                <input
+                  type="checkbox"
+                  checked={isActive}
+                  onChange={() =>
+                    onFilterChange({
+                      ...filters,
+                      coolingTypeId: toggleExclusive(filters.coolingTypeId, item.id),
+                    })
+                  }
+                />
+                <span>{item.name}</span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="filter-section">
+        <span className="filter-label">Room For</span>
+        <div className="checkbox-stack">
+          {roomForOptions.map((item) => {
+            const isActive = filters.gender.includes(item);
+            return (
+              <label key={item} className={`checkbox-item checkbox-item-card ${isActive ? "active" : ""}`}>
+                <input
+                  type="checkbox"
+                  checked={isActive}
+                  onChange={() =>
+                    onFilterChange({
+                      ...filters,
+                      gender: toggleExclusive(filters.gender, item),
+                    })
+                  }
+                />
+                <span>{item}</span>
+              </label>
+            );
+          })}
         </div>
       </div>
 

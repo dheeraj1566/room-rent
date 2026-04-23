@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GoogleMap, MarkerF, useJsApiLoader } from "@react-google-maps/api";
 import { useLocation } from "react-router-dom";
-import { GOOGLE_MAPS_API_KEY, type Coordinates } from "../lib/googleMaps";
+import { GOOGLE_MAPS_API_KEY, type Coordinates } from "../../lib/googleMaps";
 
 type GoogleLocationPickerMapProps = {
   center: Coordinates;

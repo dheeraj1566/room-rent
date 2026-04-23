@@ -128,7 +128,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="page-section">
+        <section className="page-section" style={{ paddingTop: "4rem" }}>
           <div className="page-container">
             <div className="feature-grid">
               <article className="feature-card">

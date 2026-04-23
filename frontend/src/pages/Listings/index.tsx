@@ -4,6 +4,7 @@ import Navbar from "../../components/Navbar";
 import SiteFooter from "../../components/SiteFooter";
 import FilterSidebar from "../../components/FilterSidebar";
 import ListingCard from "../../components/ListingCard";
+import Select from "../../components/Select";
 import Skeleton from "../../components/Skeleton";
 import { ApiError, apiFetch } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
@@ -37,7 +38,10 @@ type FilterState = {
   maxRent: number;
   maxOccupants: number[];
   furnishingTypeId: number[];
+  foodPreferenceId: number[];
+  coolingTypeId: number[];
   propertyTypeId: number[];
+  gender: ("Male" | "Female" | "Other")[];
   sortBy: "newest" | "rent_asc" | "rent_desc";
 };
 
@@ -50,7 +54,10 @@ const defaultFilters: FilterState = {
   maxRent: RENT_MAX,
   maxOccupants: [],
   furnishingTypeId: [],
+  foodPreferenceId: [],
+  coolingTypeId: [],
   propertyTypeId: [],
+  gender: [],
   sortBy: "newest",
 };
 
@@ -60,6 +67,15 @@ const parseNumberList = (value: string | null): number[] => {
     .split(",")
     .map((item) => Number(item.trim()))
     .filter((item) => Number.isFinite(item) && item > 0);
+};
+
+const parseGenderList = (value: string | null): ("Male" | "Female" | "Other")[] => {
+  if (!value || !value.trim()) return [];
+  const allowed = new Set(["Male", "Female", "Other"]);
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item): item is "Male" | "Female" | "Other" => allowed.has(item));
 };
 
 export default function ListingsPage() {
@@ -75,11 +91,32 @@ export default function ListingsPage() {
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [searchInput, setSearchInput] = useState("");
 
+  const sortOptions = useMemo(
+    () => [
+      { value: "newest", label: "Newest First" },
+      { value: "rent_asc", label: "Price: Low to High" },
+      { value: "rent_desc", label: "Price: High to Low" },
+    ],
+    [],
+  );
+
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
 
   useEffect(() => {
     const sanitized = new URLSearchParams();
-    const keysToKeep = ["page", "sortBy", "search", "minRent", "maxRent", "maxOccupants", "furnishingTypeId", "propertyTypeId"];
+    const keysToKeep = [
+      "page",
+      "sortBy",
+      "search",
+      "minRent",
+      "maxRent",
+      "maxOccupants",
+      "furnishingTypeId",
+      "foodPreferenceId",
+      "coolingTypeId",
+      "propertyTypeId",
+      "gender",
+    ];
     keysToKeep.forEach((key) => {
       const value = searchParams.get(key);
       if (value) sanitized.set(key, value);
@@ -94,6 +131,31 @@ export default function ListingsPage() {
       sanitized.delete("propertyTypeId");
     }
 
+    const rawFoodPreferenceIds = parseNumberList(searchParams.get("foodPreferenceId")).filter((value) =>
+      [1, 2, 3].includes(value),
+    );
+    if (rawFoodPreferenceIds.length > 0) {
+      sanitized.set("foodPreferenceId", rawFoodPreferenceIds.join(","));
+    } else {
+      sanitized.delete("foodPreferenceId");
+    }
+
+    const rawCoolingTypeIds = parseNumberList(searchParams.get("coolingTypeId")).filter((value) =>
+      [1, 2, 3].includes(value),
+    );
+    if (rawCoolingTypeIds.length > 0) {
+      sanitized.set("coolingTypeId", rawCoolingTypeIds.join(","));
+    } else {
+      sanitized.delete("coolingTypeId");
+    }
+
+    const rawGenders = parseGenderList(searchParams.get("gender"));
+    if (rawGenders.length > 0) {
+      sanitized.set("gender", rawGenders.join(","));
+    } else {
+      sanitized.delete("gender");
+    }
+
     if (sanitized.toString() !== searchParams.toString()) {
       setSearchParams(sanitized, { replace: true });
     }
@@ -106,9 +168,16 @@ export default function ListingsPage() {
       maxRent: Number(searchParams.get("maxRent")) || defaultFilters.maxRent,
       maxOccupants: parseNumberList(searchParams.get("maxOccupants")),
       furnishingTypeId: parseNumberList(searchParams.get("furnishingTypeId")),
+      foodPreferenceId: parseNumberList(searchParams.get("foodPreferenceId")).filter((value) =>
+        [1, 2, 3].includes(value),
+      ),
+      coolingTypeId: parseNumberList(searchParams.get("coolingTypeId")).filter((value) =>
+        [1, 2, 3].includes(value),
+      ),
       propertyTypeId: parseNumberList(searchParams.get("propertyTypeId")).filter((value) =>
         [1, 2, 3].includes(value),
       ),
+      gender: parseGenderList(searchParams.get("gender")),
       sortBy:
         searchParams.get("sortBy") === "rent_asc" || searchParams.get("sortBy") === "rent_desc"
           ? (searchParams.get("sortBy") as "rent_asc" | "rent_desc")
@@ -135,7 +204,10 @@ export default function ListingsPage() {
     if (filters.maxRent < RENT_MAX) params.set("maxRent", String(filters.maxRent));
     if (filters.maxOccupants.length) params.set("maxOccupants", filters.maxOccupants.join(","));
     if (filters.furnishingTypeId.length) params.set("furnishingTypeId", filters.furnishingTypeId.join(","));
+    if (filters.foodPreferenceId.length) params.set("foodPreferenceId", filters.foodPreferenceId.join(","));
+    if (filters.coolingTypeId.length) params.set("coolingTypeId", filters.coolingTypeId.join(","));
     if (filters.propertyTypeId.length) params.set("propertyTypeId", filters.propertyTypeId.join(","));
+    if (filters.gender.length) params.set("gender", filters.gender.join(","));
 
     return `/api/listings?${params.toString()}`;
   }, [filters, page]);
@@ -182,7 +254,10 @@ export default function ListingsPage() {
     if (nextFilters.maxRent < RENT_MAX) next.set("maxRent", String(nextFilters.maxRent));
     if (nextFilters.maxOccupants.length) next.set("maxOccupants", nextFilters.maxOccupants.join(","));
     if (nextFilters.furnishingTypeId.length) next.set("furnishingTypeId", nextFilters.furnishingTypeId.join(","));
+    if (nextFilters.foodPreferenceId.length) next.set("foodPreferenceId", nextFilters.foodPreferenceId.join(","));
+    if (nextFilters.coolingTypeId.length) next.set("coolingTypeId", nextFilters.coolingTypeId.join(","));
     if (nextFilters.propertyTypeId.length) next.set("propertyTypeId", nextFilters.propertyTypeId.join(","));
+    if (nextFilters.gender.length) next.set("gender", nextFilters.gender.join(","));
     setSearchParams(next);
   };
 
@@ -208,7 +283,7 @@ export default function ListingsPage() {
         <section className="hero-panel hero-gradient">
           <div className="page-container" style={{ padding: "56px 0 52px" }}>
             <p className="eyebrow" style={{ marginBottom: 14 }}>Discover Rentals</p>
-            <h1 style={{ fontSize: "3.25rem", lineHeight: 1.06, marginBottom: 10 }}>
+            <h1 style={{ fontSize: "clamp(2.05rem, 4.8vw, 3.25rem)", lineHeight: 1.06, marginBottom: 10 }}>
               Find your next stay with confidence
             </h1>
             <p className="section-subtitle">
@@ -231,45 +306,36 @@ export default function ListingsPage() {
               />
 
               <div>
-                <div className="sort-bar">
-                  <div>
-                    <h3>{loading ? "Loading properties..." : `${total.toLocaleString("en-IN")} properties found`}</h3>
-                    <p>Updated just now</p>
-                  </div>
+                <div className="sort-bar sort-bar-minimal">
+                  <input
+                    className="input-style sort-bar-search"
+                    value={searchInput}
+                    onChange={(event) => setSearchInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        const nextFilters = { ...filters, search: searchInput.trim() };
+                        setFilters(nextFilters);
+                        updateParams(nextFilters);
+                      }
+                    }}
+                    placeholder="Search area or colony"
+                    aria-label="Search area or colony"
+                  />
 
-                  <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
-                    <input
-                      className="input-style"
-                      value={searchInput}
-                      onChange={(event) => setSearchInput(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          const nextFilters = { ...filters, search: searchInput.trim() };
-                          setFilters(nextFilters);
-                          updateParams(nextFilters);
-                        }
-                      }}
-                      placeholder="Search area or colony"
-                      style={{ maxWidth: 260, height: 48 }}
-                    />
-
-                    <select
-                      className="select-style"
+                  <div className="sort-bar-select">
+                    <Select
                       value={filters.sortBy}
-                      onChange={(event) => {
+                      onChange={(next) => {
                         const nextFilters = {
                           ...filters,
-                          sortBy: event.target.value as FilterState["sortBy"],
+                          sortBy: next as FilterState["sortBy"],
                         };
                         setFilters(nextFilters);
                         updateParams(nextFilters);
                       }}
-                      style={{ maxWidth: 190, height: 48 }}
-                    >
-                      <option value="newest">Newest First</option>
-                      <option value="rent_asc">Price: Low to High</option>
-                      <option value="rent_desc">Price: High to Low</option>
-                    </select>
+                      options={sortOptions}
+                      aria-label="Sort listings"
+                    />
                   </div>
                 </div>
 

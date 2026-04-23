@@ -96,7 +96,7 @@ type ConnectionStatus = {
 
 const propertyTypeMap: Record<number, string> = {
   1: "PG",
-  2: "Independent Room",
+  2: "Individual",
   3: "Flat",
 };
 
@@ -571,7 +571,7 @@ export default function ListingDetailsPage() {
                       <iframe
                         title="Property location"
                         src={mapUrl}
-                        style={{ width: "100%", height: 420, border: 0 }}
+                        style={{ width: "100%", height: "clamp(240px, 52vw, 420px)", border: 0 }}
                         loading="lazy"
                         referrerPolicy="no-referrer-when-downgrade"
                       />

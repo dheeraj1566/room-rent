@@ -7,6 +7,7 @@ import { ApiError, apiFetch } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import Skeleton from "../../components/Skeleton";
+import Select from "../../components/Select";
 
 type Profile = {
   fullName: string | null;
@@ -44,6 +45,12 @@ const emptyPayload: ProfilePayload = {
   gender: "",
 };
 
+const GENDER_OPTIONS = [
+  { value: "Male", label: "Male" },
+  { value: "Female", label: "Female" },
+  { value: "Other", label: "Other" },
+];
+
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { logout, refreshSession } = useAuth();
@@ -53,9 +60,11 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [isAadhaarLocked, setIsAadhaarLocked] = useState(false);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [favoritesLoading, setFavoritesLoading] = useState(true);
   const initialForm = useRef<ProfilePayload>(emptyPayload);
+  const favoritePreview = favorites.slice(0, 3);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -73,6 +82,7 @@ export default function ProfilePage() {
       };
       setForm(nextPayload);
       initialForm.current = nextPayload;
+      setIsAadhaarLocked(Boolean(nextPayload.aadhaar));
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         await logout();
@@ -99,6 +109,7 @@ export default function ProfilePage() {
     try {
       const changedFields: Partial<ProfilePayload> = {};
       (Object.keys(form) as (keyof ProfilePayload)[]).forEach((key) => {
+        if (key === "aadhaar" && isAadhaarLocked) return;
         if (form[key] !== initialForm.current[key]) {
           (changedFields as Record<keyof ProfilePayload, ProfilePayload[keyof ProfilePayload]>)[key] = form[key];
         }
@@ -114,6 +125,9 @@ export default function ProfilePage() {
         body: JSON.stringify(changedFields),
       });
       initialForm.current = { ...initialForm.current, ...changedFields };
+      if (typeof changedFields.aadhaar === "string" && changedFields.aadhaar.length === 12) {
+        setIsAadhaarLocked(true);
+      }
       await refreshSession();
       showToast("Profile updated", "success");
     } catch (error) {
@@ -216,21 +230,18 @@ export default function ProfilePage() {
                         </div>
                         <div className="field">
                           <label>Gender</label>
-                          <select
-                            className="select-style"
+                          <Select
                             value={form.gender}
-                            onChange={(event) =>
+                            onChange={(next) =>
                               setForm((prev) => ({
                                 ...prev,
-                                gender: event.target.value as ProfilePayload["gender"],
+                                gender: next as ProfilePayload["gender"],
                               }))
                             }
-                          >
-                            <option value="">Select gender</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Other">Other</option>
-                          </select>
+                            options={GENDER_OPTIONS}
+                            placeholder="Select gender"
+                            aria-label="Select gender"
+                          />
                         </div>
                         <div className="field">
                           <label>Aadhaar</label>
@@ -238,16 +249,22 @@ export default function ProfilePage() {
                             className="input-style"
                             value={form.aadhaar ? form.aadhaar.replace(/(\d{4})(?=\d)/g, "$1-") : ""}
                             onChange={(event) =>
-                              setForm((prev) => ({
-                                ...prev,
-                                aadhaar: event.target.value.replace(/\D/g, "").slice(0, 12),
-                              }))
+                              setForm((prev) => {
+                                if (isAadhaarLocked) return prev;
+                                return {
+                                  ...prev,
+                                  aadhaar: event.target.value.replace(/\D/g, "").slice(0, 12),
+                                };
+                              })
                             }
                             placeholder="XXXX-XXXX-XXXX"
                             maxLength={14}
+                            disabled={isAadhaarLocked}
                           />
                           <span className="field-note">
-                            Your Aadhaar number is permanent once saved. Please verify carefully.
+                            {isAadhaarLocked
+                              ? "Aadhaar is locked and cannot be changed once saved."
+                              : "Your Aadhaar number is permanent once saved. Please verify carefully."}
                           </span>
                         </div>
                         <div className="field" style={{ gridColumn: "1 / -1" }}>
@@ -273,48 +290,6 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="surface-card liked-properties-card" style={{ marginTop: 26 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
-                    <Heart size={22} fill="currentColor" style={{ color: "#ef4444" }} />
-                    <h2 style={{ fontSize: "2rem" }}>Liked Properties</h2>
-                  </div>
-
-                  {favoritesLoading ? (
-                    <Skeleton style={{ height: 220, borderRadius: 22 }} />
-                  ) : favorites.length === 0 ? (
-                    <div className="request-empty">
-                      <div>
-                        <Home size={48} style={{ color: "var(--slate-600)", marginBottom: 14 }} />
-                        <h3 style={{ marginBottom: 8 }}>You haven't liked any properties yet</h3>
-                        <p>Tap the heart on any listing to save it here.</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="listing-grid">
-                      {favorites.map((favorite) => (
-                        <article
-                          key={favorite.listingId}
-                          className="listing-card"
-                          onClick={() => navigate(`/listings/${favorite.listingId}`)}
-                        >
-                          <div className="listing-card-image">
-                            {favorite.coverPhotoUrl ? (
-                              <img src={favorite.coverPhotoUrl} alt={favorite.title} />
-                            ) : (
-                              <div className="listing-card-placeholder">
-                                <Home size={66} />
-                                <span style={{ fontWeight: 700 }}>NO IMAGE YET</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="listing-card-content">
-                            <h3 className="listing-card-title">{favorite.title}</h3>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  )}
-                </div>
               </>
             )}
           </div>

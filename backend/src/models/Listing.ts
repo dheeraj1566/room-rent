@@ -24,6 +24,7 @@ export interface IListing extends Document {
   maxOccupants: number;
   allowSmoking: boolean;
   foodPreference: string;
+  coolingType?: string;
   propertyType?: string;
   foodLevel?: number;
   bedType?: "Single" | "Double" | "Mixed";
@@ -81,6 +82,7 @@ const listingSchema = new Schema<IListing>(
     maxOccupants: { type: Number, required: true, min: 1, max: 4 },
     allowSmoking: { type: Boolean, default: false },
     foodPreference: { type: String, required: true },
+    coolingType: { type: String, enum: ["AC", "Non-AC", "Cooler"] },
     propertyType: { type: String, enum: ["PG", "Individual", "Flat"] },
     foodLevel: { type: Number },
     bedType: { type: String, enum: ["Single", "Double", "Mixed"] },

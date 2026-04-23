@@ -11,6 +11,7 @@ import Register from "./pages/Register/index";
 import ForgotPassword from "./pages/ForgotPassword/index";
 import ResetPassword from "./pages/ResetPassword/index";
 import ProfilePage from "./pages/Profile/index";
+import LikedPropertiesPage from "./pages/LikedProperties/index";
 import Skeleton from "./components/Skeleton";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -82,6 +83,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ProfilePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/liked-properties"
+        element={
+          <ProtectedRoute>
+            <LikedPropertiesPage />
           </ProtectedRoute>
         }
       />
