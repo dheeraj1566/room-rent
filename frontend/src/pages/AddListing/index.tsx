@@ -19,7 +19,7 @@ type RoomForm = {
   floorLevelId: number | "";
   maxOccupants: number | "";
   monthlyRent: number | "";
-  rentPerPerson: number | "";
+  rentTiers: { occupants: number; rent: number | "" }[];
   furnishingTypeId: number | "";
   foodPreferenceId: number | "";
   foodLevelId: number | "";
@@ -97,7 +97,7 @@ const createRoom = (): RoomForm => ({
   floorLevelId: "",
   maxOccupants: "",
   monthlyRent: "",
-  rentPerPerson: "",
+  rentTiers: [],
   furnishingTypeId: "",
   foodPreferenceId: "",
   foodLevelId: "",
@@ -175,16 +175,42 @@ export default function AddListing() {
       
       const updated = { ...room, ...patch };
       
-      // Auto-calculate monthly rent when occupants or per-person rate changes
-      if (patch.maxOccupants !== undefined || patch.rentPerPerson !== undefined) {
-        const occupants = Number(updated.maxOccupants) || 0;
-        const perPersonRate = Number(updated.rentPerPerson) || 0;
-        if (occupants > 0 && perPersonRate > 0) {
-          updated.monthlyRent = occupants * perPersonRate;
+      // Generate rent tiers when max occupants changes
+      if (patch.maxOccupants !== undefined) {
+        const maxOccupants = Number(updated.maxOccupants);
+        if (maxOccupants > 0) {
+          const newTiers = [];
+          for (let i = 1; i <= maxOccupants; i++) {
+            const existingTier = room.rentTiers.find(tier => tier.occupants === i);
+            newTiers.push({
+              occupants: i,
+              rent: existingTier?.rent || ""
+            });
+          }
+          updated.rentTiers = newTiers;
+        } else {
+          updated.rentTiers = [];
         }
       }
       
       return updated;
+    }));
+  };
+
+  const updateRentTier = (roomId: string, occupants: number, rent: number | "") => {
+    setRooms((prev) => prev.map((room) => {
+      if (room.id !== roomId) return room;
+      
+      const updatedTiers = room.rentTiers.map(tier => 
+        tier.occupants === occupants ? { ...tier, rent } : tier
+      );
+      
+      // Update monthlyRent to the rent for max occupants
+      const maxOccupants = Number(room.maxOccupants);
+      const maxOccupantsTier = updatedTiers.find(tier => tier.occupants === maxOccupants);
+      const monthlyRent = maxOccupantsTier && maxOccupantsTier.rent !== "" ? Number(maxOccupantsTier.rent) : "";
+      
+      return { ...room, rentTiers: updatedTiers, monthlyRent };
     }));
   };
 
@@ -223,11 +249,16 @@ export default function AddListing() {
       const isIndividual = Number(room.propertyTypeId) === 2;
       const isFlat = Number(room.propertyTypeId) === 3;
       const needsAdvanced = isPG || isIndividual || isFlat;
+      const maxOccupants = Number(room.maxOccupants);
+      
+      // Check if rent for max occupants is set
+      const maxOccupantsRent = room.rentTiers.find(tier => tier.occupants === maxOccupants)?.rent;
+      
       if (
         room.propertyTypeId === "" ||
         room.floorLevelId === "" ||
         room.maxOccupants === "" ||
-        room.rentPerPerson === "" ||
+        !maxOccupantsRent || maxOccupantsRent === "" ||
         room.furnishingTypeId === "" ||
         room.foodPreferenceId === "" ||
         room.coolingTypeId === "" ||
@@ -314,7 +345,12 @@ export default function AddListing() {
           availableFrom: room.availableFrom,
           description: room.description.trim(),
           allowSmoking: room.allowSmoking,
-          rentTiers: [],
+          rentTiers: room.rentTiers
+            .filter(tier => tier.rent !== "" && tier.rent !== null)
+            .map(tier => ({
+              occupants: tier.occupants,
+              rent: Number(tier.rent)
+            })),
         })),
       };
 
@@ -521,20 +557,46 @@ export default function AddListing() {
                         />
                       </div>
 
+                      {/* Monthly Rent Field - Always Visible */}
                       <div className="field">
-                        <label>Rent per Person (₹) *</label>
+                        <label>Monthly Rent (₹) * {room.maxOccupants && Number(room.maxOccupants) > 0 ? <span style={{ color: "var(--text-secondary)" }}>for {room.maxOccupants} occupants</span> : null}</label>
                         <input
                           className="input-style"
-                          value={room.rentPerPerson}
-                          onChange={(e) => updateRoom(room.id, { rentPerPerson: e.target.value ? Number(e.target.value.replace(/\D/g, "")) : "" })}
-                          placeholder="e.g. 8000"
+                          value={room.maxOccupants && Number(room.maxOccupants) > 0 ? (room.rentTiers.find(tier => tier.occupants === Number(room.maxOccupants))?.rent || "") : room.monthlyRent}
+                          onChange={(e) => {
+                            const value = e.target.value ? Number(e.target.value.replace(/\D/g, "")) : "";
+                            if (room.maxOccupants && Number(room.maxOccupants) > 0) {
+                              updateRentTier(room.id, Number(room.maxOccupants), value);
+                            } else {
+                              updateRoom(room.id, { monthlyRent: value });
+                            }
+                          }}
+                          placeholder="e.g. 12000"
                         />
-                        {room.maxOccupants && room.rentPerPerson ? (
-                          <span className="field-note" style={{ color: "var(--green-600)", fontWeight: 600 }}>
-                            Total Monthly Rent: ₹{(Number(room.maxOccupants) * Number(room.rentPerPerson)).toLocaleString("en-IN")}
-                          </span>
-                        ) : null}
                       </div>
+
+                      {/* Dynamic Rent Tiers for Lower Occupancy - Only show after selecting max occupants */}
+                      {room.maxOccupants && Number(room.maxOccupants) > 1 ? (
+                        <div style={{ gridColumn: "1 / -1" }}>
+                          <div className="field-grid-2">
+                            {Array.from({ length: Number(room.maxOccupants) - 1 }, (_, index) => {
+                              const occupants = Number(room.maxOccupants) - 1 - index;
+                              const tierRent = room.rentTiers.find(tier => tier.occupants === occupants)?.rent || "";
+                              return (
+                                <div key={occupants} className="field">
+                                  <label>Rent for {occupants} Occupant{occupants > 1 ? 's' : ''} (₹)</label>
+                                  <input
+                                    className="input-style"
+                                    value={tierRent}
+                                    onChange={(e) => updateRentTier(room.id, occupants, e.target.value ? Number(e.target.value.replace(/\D/g, "")) : "")}
+                                    placeholder={`e.g. ${Math.max(1000, Number(room.rentTiers.find(tier => tier.occupants === Number(room.maxOccupants))?.rent || 0) - 1000 * (Number(room.maxOccupants) - occupants))}`}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : null}
 
                       <div className="field">
                         <label>Furnishing *</label>
