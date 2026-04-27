@@ -53,7 +53,15 @@ export default function Select({
       setOpen(false);
     };
 
-    const onScrollOrResize = () => {
+    const onScroll = (event: Event) => {
+      // Don't close if scrolling within the select menu
+      if (menuRef.current?.contains(event.target as Node)) {
+        return;
+      }
+      setOpen(false);
+    };
+
+    const onResize = () => {
       setOpen(false);
     };
 
@@ -66,13 +74,13 @@ export default function Select({
     };
 
     window.addEventListener("pointerdown", onPointerDown);
-    window.addEventListener("scroll", onScrollOrResize, true);
-    window.addEventListener("resize", onScrollOrResize);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("pointerdown", onPointerDown);
-      window.removeEventListener("scroll", onScrollOrResize, true);
-      window.removeEventListener("resize", onScrollOrResize);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);

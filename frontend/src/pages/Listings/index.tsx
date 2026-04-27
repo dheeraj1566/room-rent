@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import SiteFooter from "../../components/SiteFooter";
@@ -87,8 +87,12 @@ export default function ListingsPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [totalPages, setTotalPages] = useState(1);
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
+  const [debouncedFilters, setDebouncedFilters] = useState<FilterState>(defaultFilters); // For API calls
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [searchInput, setSearchInput] = useState("");
+  const [isFilterPending, setIsFilterPending] = useState(false); // Loading state for debounced filters
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const sortOptions = useMemo(
     () => [
@@ -161,7 +165,7 @@ export default function ListingsPage() {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    setFilters({
+    const newFilters = {
       search: searchParams.get("search") || "",
       minRent: Number(searchParams.get("minRent")) || defaultFilters.minRent,
       maxRent: Number(searchParams.get("maxRent")) || defaultFilters.maxRent,
@@ -181,7 +185,9 @@ export default function ListingsPage() {
         searchParams.get("sortBy") === "rent_asc" || searchParams.get("sortBy") === "rent_desc"
           ? (searchParams.get("sortBy") as "rent_asc" | "rent_desc")
           : "newest",
-    });
+    };
+    setFilters(newFilters);
+    setDebouncedFilters(newFilters);
     setSearchInput(searchParams.get("search") || "");
   }, [searchParams]);
 
@@ -196,35 +202,52 @@ export default function ListingsPage() {
     const params = new URLSearchParams();
     params.set("page", String(page));
     params.set("limit", "24");
-    params.set("sortBy", filters.sortBy);
+    params.set("sortBy", debouncedFilters.sortBy);
 
-    if (filters.search.trim()) params.set("search", filters.search.trim());
-    if (filters.minRent > RENT_MIN) params.set("minRent", String(filters.minRent));
-    if (filters.maxRent < RENT_MAX) params.set("maxRent", String(filters.maxRent));
-    if (filters.maxOccupants.length) params.set("maxOccupants", filters.maxOccupants.join(","));
-    if (filters.furnishingTypeId.length) params.set("furnishingTypeId", filters.furnishingTypeId.join(","));
-    if (filters.foodPreferenceId.length) params.set("foodPreferenceId", filters.foodPreferenceId.join(","));
-    if (filters.coolingTypeId.length) params.set("coolingTypeId", filters.coolingTypeId.join(","));
-    if (filters.propertyTypeId.length) params.set("propertyTypeId", filters.propertyTypeId.join(","));
-    if (filters.gender.length) params.set("gender", filters.gender.join(","));
+    if (debouncedFilters.search.trim()) params.set("search", debouncedFilters.search.trim());
+    if (debouncedFilters.minRent > RENT_MIN) params.set("minRent", String(debouncedFilters.minRent));
+    if (debouncedFilters.maxRent < RENT_MAX) params.set("maxRent", String(debouncedFilters.maxRent));
+    if (debouncedFilters.maxOccupants.length) params.set("maxOccupants", debouncedFilters.maxOccupants.join(","));
+    if (debouncedFilters.furnishingTypeId.length) params.set("furnishingTypeId", debouncedFilters.furnishingTypeId.join(","));
+    if (debouncedFilters.foodPreferenceId.length) params.set("foodPreferenceId", debouncedFilters.foodPreferenceId.join(","));
+    if (debouncedFilters.coolingTypeId.length) params.set("coolingTypeId", debouncedFilters.coolingTypeId.join(","));
+    if (debouncedFilters.propertyTypeId.length) params.set("propertyTypeId", debouncedFilters.propertyTypeId.join(","));
+    if (debouncedFilters.gender.length) params.set("gender", debouncedFilters.gender.join(","));
 
     return `/api/listings?${params.toString()}`;
-  }, [filters, page]);
+  }, [debouncedFilters, page]);
 
   useEffect(() => {
     let active = true;
+
+    // Cancel previous request if it exists
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
 
     const load = async () => {
       setLoading(true);
       setErrorMsg("");
 
+      // Create new abort controller for this request
+      abortControllerRef.current = new AbortController();
+
       try {
-        const data = await apiFetch<ListingsResponse>(queryPath, { method: "GET" });
+        const data = await apiFetch<ListingsResponse>(queryPath, { 
+          method: "GET",
+          signal: abortControllerRef.current.signal
+        });
         if (!active) return;
         setItems(Array.isArray(data.items) ? data.items : []);
         setTotalPages(Math.max(1, data.totalPages ?? 1));
       } catch (error) {
         if (!active) return;
+        
+        // Don't show error for aborted requests
+        if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
+        
         if (error instanceof ApiError && error.status === 401) {
           await logout();
           navigate("/login", { replace: true });
@@ -232,7 +255,10 @@ export default function ListingsPage() {
         }
         setErrorMsg(error instanceof Error ? error.message : "Failed to load listings");
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+          abortControllerRef.current = null;
+        }
       }
     };
 
@@ -240,13 +266,19 @@ export default function ListingsPage() {
 
     return () => {
       active = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
     };
   }, [queryPath, logout, navigate]);
 
   const updateParams = (nextFilters: FilterState, nextPage = 1) => {
     const next = new URLSearchParams();
-    next.set("page", String(nextPage));
-    next.set("sortBy", nextFilters.sortBy);
+    
+    // Only add non-default parameters
+    if (nextPage > 1) next.set("page", String(nextPage));
+    if (nextFilters.sortBy !== "newest") next.set("sortBy", nextFilters.sortBy);
     if (nextFilters.search.trim()) next.set("search", nextFilters.search.trim());
     if (nextFilters.minRent > RENT_MIN) next.set("minRent", String(nextFilters.minRent));
     if (nextFilters.maxRent < RENT_MAX) next.set("maxRent", String(nextFilters.maxRent));
@@ -258,6 +290,36 @@ export default function ListingsPage() {
     if (nextFilters.gender.length) next.set("gender", nextFilters.gender.join(","));
     setSearchParams(next);
   };
+
+  // Debounced handler for ALL filter changes
+  const handleFilterChange = useCallback((newFilters: FilterState) => {
+    // Update display filters immediately for visual feedback
+    setFilters(newFilters);
+    setIsFilterPending(true);
+    
+    // Clear existing timeout
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    // Set new timeout to update debounced filters after delay
+    debounceRef.current = setTimeout(() => {
+      setDebouncedFilters(newFilters);
+      setIsFilterPending(false);
+    }, 500); // 500ms debounce delay for all filters
+  }, []);
+  
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const handleToggleFavorite = async (listingId: string) => {
     try {
@@ -295,11 +357,25 @@ export default function ListingsPage() {
             <div className="listings-layout">
               <FilterSidebar
                 filters={filters}
-                onFilterChange={setFilters}
-                onApply={(nextFilters) => updateParams(nextFilters)}
+                onFilterChange={handleFilterChange}
+                onApply={(nextFilters) => {
+                  // Apply immediately, bypass debouncing
+                  setDebouncedFilters(nextFilters);
+                  setIsFilterPending(false);
+                  if (debounceRef.current) {
+                    clearTimeout(debounceRef.current);
+                  }
+                  updateParams(nextFilters);
+                }}
                 onClear={() => {
                   setFilters(defaultFilters);
+                  setDebouncedFilters(defaultFilters);
+                  setIsFilterPending(false);
                   updateParams(defaultFilters, 1);
+                  // Clear any pending debounced changes
+                  if (debounceRef.current) {
+                    clearTimeout(debounceRef.current);
+                  }
                 }}
               />
 
@@ -312,8 +388,7 @@ export default function ListingsPage() {
                     onKeyDown={(event) => {
                       if (event.key === "Enter") {
                         const nextFilters = { ...filters, search: searchInput.trim() };
-                        setFilters(nextFilters);
-                        updateParams(nextFilters);
+                        handleFilterChange(nextFilters);
                       }
                     }}
                     placeholder="Search area or colony"
@@ -321,6 +396,12 @@ export default function ListingsPage() {
                   />
 
                   <div className="sort-bar-select">
+                    {isFilterPending && (
+                      <div className="filter-pending-indicator">
+                        <div className="spinner-sm"></div>
+                        <span>Updating...</span>
+                      </div>
+                    )}
                     <Select
                       value={filters.sortBy}
                       onChange={(next) => {
@@ -328,8 +409,7 @@ export default function ListingsPage() {
                           ...filters,
                           sortBy: next as FilterState["sortBy"],
                         };
-                        setFilters(nextFilters);
-                        updateParams(nextFilters);
+                        handleFilterChange(nextFilters);
                       }}
                       options={sortOptions}
                       aria-label="Sort listings"
@@ -386,7 +466,7 @@ export default function ListingsPage() {
                     <button
                       className="btn btn-outline"
                       disabled={page <= 1}
-                      onClick={() => updateParams(filters, page - 1)}
+                      onClick={() => updateParams(debouncedFilters, page - 1)}
                     >
                       Previous
                     </button>
@@ -396,7 +476,7 @@ export default function ListingsPage() {
                     <button
                       className="btn btn-outline"
                       disabled={page >= totalPages}
-                      onClick={() => updateParams(filters, page + 1)}
+                      onClick={() => updateParams(debouncedFilters, page + 1)}
                     >
                       Next
                     </button>

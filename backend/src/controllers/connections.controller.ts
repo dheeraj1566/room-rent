@@ -144,7 +144,7 @@ export const getLandlordConnections = async (
         .select("fullName email phone photoUrl")
         .lean(),
       Listing.find({ _id: { $in: listingIds } })
-        .select("title colony city")
+        .select("title colony city monthlyRent")
         .lean(),
     ]);
 
@@ -163,6 +163,7 @@ export const getLandlordConnections = async (
         tenantPhoto: tenant?.photoUrl ?? null,
         listingId: String(c.listingId),
         listingTitle: listing ? `${listing.title} · ${listing.colony}, ${listing.city}` : "Unknown Listing",
+        monthlyRent: listing?.monthlyRent ?? 0,
         status: c.status,
         isConnected: c.isConnected,
         requestedAt: c.createdAt.toISOString(),

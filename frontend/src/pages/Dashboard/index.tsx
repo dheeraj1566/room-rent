@@ -25,8 +25,10 @@ type TenantConnection = {
   connectionId: string;
   tenantName: string;
   listingTitle: string;
+  monthlyRent: number;
   status: "Pending" | "Accepted" | "Rejected";
   requestedAt: string;
+  finalDealAmount?: number;
 };
 
 export default function Dashboard() {
@@ -40,6 +42,11 @@ export default function Dashboard() {
   const [connectionsLoading, setConnectionsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [processingConnectionId, setProcessingConnectionId] = useState<string | null>(null);
+  
+  // Deal amount dialog state
+  const [dealDialogOpen, setDealDialogOpen] = useState(false);
+  const [selectedConnection, setSelectedConnection] = useState<TenantConnection | null>(null);
+  const [dealAmount, setDealAmount] = useState<string>("");
 
   useEffect(() => {
     let active = true;
@@ -79,18 +86,37 @@ export default function Dashboard() {
     };
   }, [logout, navigate]);
 
-  const handleAcceptRequest = async (connectionId: string) => {
-    setProcessingConnectionId(connectionId);
+  const handleAcceptRequest = async (connection: TenantConnection) => {
+    setSelectedConnection(connection);
+    setDealAmount(connection.monthlyRent.toString());
+    setDealDialogOpen(true);
+  };
+
+  const handleConfirmDeal = async () => {
+    if (!selectedConnection || !dealAmount) return;
+    
+    setProcessingConnectionId(selectedConnection.connectionId);
     try {
-      await apiFetch(`/api/connections/${connectionId}/deal-done`, { method: "PATCH" });
+      await apiFetch(`/api/connections/${selectedConnection.connectionId}/deal-done`, { 
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ finalAmount: Number(dealAmount) })
+      });
+      
       setConnections((prev) =>
         prev.map((conn) =>
-          conn.connectionId === connectionId ? { ...conn, status: "Accepted" as const } : conn
+          conn.connectionId === selectedConnection.connectionId 
+            ? { ...conn, status: "Accepted" as const, finalDealAmount: Number(dealAmount) } 
+            : conn
         )
       );
-      showToast("Tenant request accepted successfully", "success");
+      
+      showToast(`Deal confirmed for ₹${Number(dealAmount).toLocaleString("en-IN")}/month`, "success");
+      setDealDialogOpen(false);
+      setSelectedConnection(null);
+      setDealAmount("");
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Failed to accept request", "error");
+      showToast(error instanceof Error ? error.message : "Failed to confirm deal", "error");
     } finally {
       setProcessingConnectionId(null);
     }
@@ -131,6 +157,80 @@ export default function Dashboard() {
   return (
     <div className="app-shell">
       <Navbar />
+
+      {/* Deal Amount Dialog */}
+      {dealDialogOpen && selectedConnection && (
+        <div className="modal-overlay" onClick={() => setDealDialogOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Confirm Deal Amount</h3>
+              <button 
+                className="modal-close-btn" 
+                onClick={() => setDealDialogOpen(false)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <div style={{ marginBottom: 20 }}>
+                <p style={{ marginBottom: 8 }}>
+                  <strong>{selectedConnection.tenantName}</strong> wants to connect for:
+                </p>
+                <p style={{ color: "var(--slate-600)" }}>{selectedConnection.listingTitle}</p>
+              </div>
+              
+              <div style={{ marginBottom: 24 }}>
+                <label className="field-label">Final Deal Amount (₹/month)</label>
+                <div style={{ position: "relative" }}>
+                  <span style={{ 
+                    position: "absolute", 
+                    left: "12px", 
+                    top: "50%", 
+                    transform: "translateY(-50%)",
+                    color: "var(--slate-600)",
+                    fontWeight: 600
+                  }}>₹</span>
+                  <input
+                    type="number"
+                    className="input-style"
+                    value={dealAmount}
+                    onChange={(e) => setDealAmount(e.target.value)}
+                    placeholder="Enter final amount"
+                    style={{ paddingLeft: "32px" }}
+                    min="1000"
+                    step="500"
+                  />
+                </div>
+                <p style={{ 
+                  fontSize: "0.85rem", 
+                  color: "var(--slate-600)", 
+                  marginTop: 8 
+                }}>
+                  Original price: ₹{selectedConnection.monthlyRent.toLocaleString("en-IN")}/month
+                </p>
+              </div>
+            </div>
+            
+            <div className="modal-footer">
+              <button 
+                className="btn btn-ghost"
+                onClick={() => setDealDialogOpen(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-primary"
+                onClick={handleConfirmDeal}
+                disabled={!dealAmount || Number(dealAmount) < 1000 || processingConnectionId === selectedConnection.connectionId}
+              >
+                {processingConnectionId === selectedConnection.connectionId ? "Confirming..." : "Confirm Deal"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="page-shell">
         <section className="page-section">
@@ -294,7 +394,17 @@ export default function Dashboard() {
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
                         <div style={{ flex: 1 }}>
                           <h3 style={{ fontSize: "1.05rem", marginBottom: 6 }}>{connection.tenantName}</h3>
-                          <p>{connection.listingTitle}</p>
+                          <p style={{ marginBottom: 4 }}>{connection.listingTitle}</p>
+                          {connection.status === "Accepted" && connection.finalDealAmount && (
+                            <p style={{ 
+                              fontSize: "0.9rem", 
+                              color: "var(--green-500)", 
+                              fontWeight: 600,
+                              marginTop: 6 
+                            }}>
+                              Deal Amount: ₹{connection.finalDealAmount.toLocaleString("en-IN")}/month
+                            </p>
+                          )}
                         </div>
                         
                         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -308,10 +418,10 @@ export default function Dashboard() {
                             <div style={{ display: "flex", gap: 8 }}>
                               <button
                                 className="btn btn-primary btn-sm"
-                                onClick={() => void handleAcceptRequest(connection.connectionId)}
+                                onClick={() => void handleAcceptRequest(connection)}
                                 disabled={processingConnectionId === connection.connectionId}
                               >
-                                {processingConnectionId === connection.connectionId ? "Accepting..." : "Accept"}
+                                {processingConnectionId === connection.connectionId ? "Processing..." : "Accept"}
                               </button>
                               <button
                                 className="btn btn-ghost btn-sm"

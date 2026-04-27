@@ -224,6 +224,65 @@ export class ListingsService {
     }));
   }
 
+  // ─── Update Location Data ─────────────────────────────────
+  static async updateLocationData(locationItems: { area: string; colonies: string[] }[]): Promise<{ 
+    updated: number; 
+    created: number; 
+    total: number;
+    errors: string[];
+  }> {
+    let updated = 0;
+    let created = 0;
+    const errors: string[] = [];
+
+    for (const item of locationItems) {
+      try {
+        // Clean and validate colonies array
+        const cleanColonies = item.colonies
+          .filter((colony) => colony && typeof colony === 'string' && colony.trim().length > 0)
+          .map((colony) => colony.trim())
+          .filter((colony, index, arr) => arr.indexOf(colony) === index); // Remove duplicates
+
+        // Try to find existing location
+        const existingLocation = await Location.findOne({ area: item.area.trim() });
+        
+        if (existingLocation) {
+          // Update existing location
+          await Location.updateOne(
+            { _id: existingLocation._id },
+            {
+              colonies: cleanColonies,
+              isActive: true,
+              updatedAt: new Date()
+            }
+          );
+          updated++;
+        } else {
+          // Create new location
+          await Location.create({
+            area: item.area.trim(),
+            colonies: cleanColonies,
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
+          created++;
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        errors.push(`Failed to process area "${item.area}": ${errorMessage}`);
+        console.error(`Location update error for ${item.area}:`, error);
+      }
+    }
+
+    return {
+      updated,
+      created,
+      total: locationItems.length,
+      errors
+    };
+  }
+
   // ─── Create Single Listing ────────────────────────────────
   static async createSingleListing(data: CreateListingDto): Promise<string> {
     const title = this.generateTitle(data.location.colony, data.roomDetails.furnishingTypeId);

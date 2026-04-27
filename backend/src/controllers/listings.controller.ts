@@ -131,6 +131,49 @@ export const getLocationOptions = async (
   }
 };
 
+export const updateLocationData = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { items } = req.body;
+    
+    if (!Array.isArray(items)) {
+      res.status(400).json({ 
+        error: "Invalid request format. Expected 'items' array." 
+      });
+      return;
+    }
+
+    // Validate each location item structure
+    for (const item of items) {
+      if (!item.area || typeof item.area !== 'string') {
+        res.status(400).json({ 
+          error: "Each item must have a valid 'area' string." 
+        });
+        return;
+      }
+      if (!Array.isArray(item.colonies)) {
+        res.status(400).json({ 
+          error: "Each item must have a 'colonies' array." 
+        });
+        return;
+      }
+    }
+
+    const result = await ListingsService.updateLocationData(items);
+    
+    res.status(200).json({
+      success: true,
+      message: `Successfully updated ${result.updated} locations and created ${result.created} new locations.`,
+      ...result
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getListingById = async (
   req: Request,
   res: Response,

@@ -3,6 +3,7 @@ import multer from "multer";
 import {
   getAllListings,
   getLocationOptions,
+  updateLocationData,
   getMyListings,
   getListingById,
   createListingsWithMedia,
@@ -31,6 +32,7 @@ router.use(requireAuth);
 // Get all active listings
 router.get("/", getAllListings);
 router.get("/location-options", getLocationOptions);
+router.put("/location-data", updateLocationData);
 router.get("/mine", getMyListings);
 router.get("/:listingId", getListingById);
 
