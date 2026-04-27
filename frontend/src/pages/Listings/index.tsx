@@ -91,7 +91,7 @@ export default function ListingsPage() {
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [searchInput, setSearchInput] = useState("");
   const [isFilterPending, setIsFilterPending] = useState(false); // Loading state for debounced filters
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceRef = useRef<number | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const sortOptions = useMemo(
@@ -165,7 +165,11 @@ export default function ListingsPage() {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    const newFilters = {
+    const sortByValue = searchParams.get("sortBy");
+    const validSortBy: FilterState["sortBy"] = 
+      sortByValue === "rent_asc" || sortByValue === "rent_desc" ? sortByValue : "newest";
+    
+    const newFilters: FilterState = {
       search: searchParams.get("search") || "",
       minRent: Number(searchParams.get("minRent")) || defaultFilters.minRent,
       maxRent: Number(searchParams.get("maxRent")) || defaultFilters.maxRent,
@@ -181,10 +185,7 @@ export default function ListingsPage() {
         [1, 2, 3].includes(value),
       ),
       gender: parseGenderList(searchParams.get("gender")),
-      sortBy:
-        searchParams.get("sortBy") === "rent_asc" || searchParams.get("sortBy") === "rent_desc"
-          ? (searchParams.get("sortBy") as "rent_asc" | "rent_desc")
-          : "newest",
+      sortBy: validSortBy,
     };
     setFilters(newFilters);
     setDebouncedFilters(newFilters);
