@@ -1,1 +1,130 @@
-/**\n * SIMPLIFIED AUTH CONTEXT\n * Much easier to understand than the original\n */\nimport React, { createContext, useContext, useEffect, useState } from \"react\";\nimport { api, TokenManager } from \"../lib/simpleApi\";\n\n// Simple user type\ninterface User {\n  id: string;\n  email: string;\n  role: string;\n  hasFullName?: boolean;\n  hasEmail?: boolean;\n  hasPhone?: boolean;\n  hasGender?: boolean;\n  hasPhoto?: boolean;\n  hasAadhaar?: boolean;\n}\n\n// Simple auth context type\ninterface AuthContextType {\n  user: User | null;\n  loading: boolean;\n  login: (email: string, password: string) => Promise<void>;\n  register: (data: RegisterData) => Promise<void>;\n  logout: () => Promise<void>;\n  refreshUser: () => Promise<void>;\n}\n\ninterface RegisterData {\n  fullName: string;\n  email: string;\n  phone: string;\n  password: string;\n  gender: \"Male\" | \"Female\" | \"Other\";\n}\n\nconst AuthContext = createContext<AuthContextType | undefined>(undefined);\n\n/**\n * SIMPLIFIED AUTH PROVIDER\n * Clean state management with clear functions\n */\nexport function AuthProvider({ children }: { children: React.ReactNode }) {\n  const [user, setUser] = useState<User | null>(null);\n  const [loading, setLoading] = useState(true);\n\n  /**\n   * Get current user from server\n   */\n  const refreshUser = async () => {\n    try {\n      const response = await api.get<{ user: User }>(\"/api/auth/me\");\n      setUser(response.user);\n    } catch (error) {\n      // If request fails, user is not authenticated\n      setUser(null);\n      TokenManager.clear();\n    }\n  };\n\n  /**\n   * Login user with email and password\n   */\n  const login = async (email: string, password: string) => {\n    const response = await api.post<{ user: User; token: string }>(\"/api/auth/login\", {\n      email,\n      password,\n    });\n    \n    // Save token and update user\n    TokenManager.set(response.token);\n    setUser(response.user);\n  };\n\n  /**\n   * Register new user\n   */\n  const register = async (data: RegisterData) => {\n    const response = await api.post<{ user: User; token: string }>(\"/api/auth/register\", data);\n    \n    // Save token and update user\n    TokenManager.set(response.token);\n    setUser(response.user);\n  };\n\n  /**\n   * Logout user\n   */\n  const logout = async () => {\n    try {\n      await api.post(\"/api/auth/logout\");\n    } catch (error) {\n      console.error(\"Logout failed:\", error);\n    } finally {\n      // Always clear local state\n      TokenManager.clear();\n      setUser(null);\n    }\n  };\n\n  /**\n   * Check authentication on app load\n   */\n  useEffect(() => {\n    const checkAuth = async () => {\n      // Only check if we have a token\n      if (TokenManager.get()) {\n        await refreshUser();\n      }\n      setLoading(false);\n    };\n\n    checkAuth();\n  }, []);\n\n  return (\n    <AuthContext.Provider\n      value={{\n        user,\n        loading,\n        login,\n        register,\n        logout,\n        refreshUser,\n      }}\n    >\n      {children}\n    </AuthContext.Provider>\n  );\n}\n\n/**\n * Hook to use auth context\n */\nexport function useAuth() {\n  const context = useContext(AuthContext);\n  if (context === undefined) {\n    throw new Error(\"useAuth must be used within an AuthProvider\");\n  }\n  return context;\n}\n\n/**\n * Simple protected route component\n */\nexport function ProtectedRoute({ children }: { children: React.ReactNode }) {\n  const { user, loading } = useAuth();\n\n  if (loading) {\n    return (\n      <div style={{ padding: \"24px\", textAlign: \"center\" }}>\n        Loading...\n      </div>\n    );\n  }\n\n  if (!user) {\n    // Redirect to login - you can customize this\n    window.location.href = \"/login\";\n    return null;\n  }\n\n  return <>{children}</>;\n}
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { api, TokenManager } from "../lib/simpleApi";
+
+interface User {
+  id: string;
+  email: string;
+  role: string;
+  hasFullName?: boolean;
+  hasEmail?: boolean;
+  hasPhone?: boolean;
+  hasGender?: boolean;
+  hasPhoto?: boolean;
+  hasAadhaar?: boolean;
+}
+
+interface RegisterData {
+  fullName: string;
+  email: string;
+  phone: string;
+  password: string;
+  gender: "Male" | "Female" | "Other";
+}
+
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (data: RegisterData) => Promise<void>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const refreshUser = async () => {
+    try {
+      const response = await api.get<{ user: User }>("/api/auth/me");
+      setUser(response.user);
+    } catch {
+      setUser(null);
+      TokenManager.clear();
+    }
+  };
+
+  const login = async (email: string, password: string) => {
+    const response = await api.post<{ user: User; token: string }>(
+      "/api/auth/login",
+      { email, password },
+    );
+
+    TokenManager.set(response.token);
+    setUser(response.user);
+  };
+
+  const register = async (data: RegisterData) => {
+    const response = await api.post<{ user: User; token: string }>(
+      "/api/auth/register",
+      data,
+    );
+
+    TokenManager.set(response.token);
+    setUser(response.user);
+  };
+
+  const logout = async () => {
+    try {
+      await api.post("/api/auth/logout");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
+      TokenManager.clear();
+      setUser(null);
+    }
+  };
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (TokenManager.get()) {
+        await refreshUser();
+      }
+      setLoading(false);
+    };
+
+    void checkAuth();
+  }, []);
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        logout,
+        refreshUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+
+  return context;
+}
+
+export function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div style={{ padding: "24px", textAlign: "center" }}>Loading...</div>;
+  }
+
+  if (!user) {
+    window.location.href = "/login";
+    return null;
+  }
+
+  return <>{children}</>;
+}
