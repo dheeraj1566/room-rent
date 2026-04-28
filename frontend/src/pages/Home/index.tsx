@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import brandLogo from "../../assets/Roombaazi Final Logo.png";
 import {
   Search,
   Shield,
@@ -77,6 +78,9 @@ export default function Home() {
         <section className="hero-panel dot-grid hero-gradient">
           <div className="page-container home-hero">
             <div>
+              <div style={{ marginBottom: 28 }}>
+                <img src={brandLogo} alt="Roombaazi" style={{ height: 48, width: "auto" }} />
+              </div>
               <span className="badge badge-soft">
                 <Star size={14} fill="currentColor" />
                 Trusted by 50,000+ renters
