@@ -15,12 +15,83 @@ const sha256Hex = (value: string) =>
   crypto.createHash("sha256").update(value).digest("hex");
 
 const buildVerifyEmailHtml = (verifyLink: string, fullName: string) => `
-<div style="font-family:sans-serif;max-width:520px;margin:auto;padding:32px;background:#fff;border-radius:12px;border:1px solid #eee">
-  <h2 style="color:#0f172a">Confirm your new email, ${fullName}</h2>
-  <p style="color:#475569">You changed the email on your Roombaazi account. Click below to verify it.</p>
-  <a href="${verifyLink}" style="display:inline-block;margin:24px 0;padding:14px 28px;background:#ff9737;color:#fff;border-radius:8px;text-decoration:none;font-weight:700">Verify Email</a>
-  <p style="color:#94a3b8;font-size:13px">Link expires in 24 hours. If you didn't request this, ignore this email.</p>
-</div>`;
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Confirm Your New Email – Roombaazi</title>
+  </head>
+  <body style="margin:0;padding:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;background-color:#f1f5f9;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:48px 0 32px;">
+      <tr>
+        <td align="center">
+          <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(15,23,42,0.12);">
+
+            <!-- TOP ACCENT BAR -->
+            <tr>
+              <td style="background:linear-gradient(90deg,#0f172a,#1e3a5f,#f59e0b,#fb923c,#f59e0b,#1e3a5f,#0f172a);height:5px;font-size:0;line-height:0;">&nbsp;</td>
+            </tr>
+
+            <!-- LOGO ON WHITE -->
+            <tr>
+              <td align="center" style="background:#ffffff;padding:28px 40px 20px;">
+                ${env.EMAIL_LOGO_URL
+                  ? `<img src="${env.EMAIL_LOGO_URL}" alt="Roombaazi" height="52" style="height:52px;width:auto;max-width:180px;display:block;margin:0 auto;" />`
+                  : `<span style="color:#0f172a;font-size:26px;font-weight:900;letter-spacing:-0.5px;font-family:Arial,sans-serif;">Room<span style="color:#f59e0b;">baazi</span></span>`}
+              </td>
+            </tr>
+
+            <!-- DARK HERO BANNER -->
+            <tr>
+              <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#0f172a 100%);padding:36px 44px 32px;text-align:center;">
+                <p style="margin:0 0 12px;font-size:40px;line-height:1;">✉️</p>
+                <h1 style="margin:0 0 10px;color:#ffffff;font-size:22px;font-weight:800;line-height:1.3;">Confirm your new email, ${fullName}</h1>
+                <p style="margin:0;color:#94a3b8;font-size:14px;line-height:1.6;">Verify your updated email address to keep your account secure</p>
+              </td>
+            </tr>
+
+            <!-- BODY -->
+            <tr>
+              <td style="padding:36px 44px 8px;">
+                <p style="margin:0 0 28px;color:#475569;font-size:15px;line-height:1.75;">
+                  You recently changed the email on your Roombaazi account. Click the button below to verify your new address.
+                </p>
+
+                <!-- CTA BUTTON -->
+                <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+                  <tr>
+                    <td align="center" style="border-radius:10px;background:linear-gradient(135deg,#f59e0b 0%,#fb923c 100%);box-shadow:0 4px 18px rgba(245,158,11,0.45);">
+                      <a href="${verifyLink}" target="_blank"
+                        style="display:inline-block;padding:15px 48px;color:#0f172a;font-size:16px;font-weight:800;text-decoration:none;border-radius:10px;letter-spacing:0.3px;">
+                        Verify Email &rarr;
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin:0 0 6px;color:#94a3b8;font-size:12px;text-align:center;line-height:1.6;">
+                  Link expires in <strong>24 hours</strong> &middot; Didn't make this change? Safely ignore this email.
+                </p>
+                <p style="margin:0 0 24px;color:#cbd5e1;font-size:11px;text-align:center;word-break:break-all;">${verifyLink}</p>
+              </td>
+            </tr>
+
+            <!-- FOOTER -->
+            <tr>
+              <td style="padding:18px 44px 28px;text-align:center;background:#f8fafc;border-top:1px solid #f1f5f9;">
+                <p style="margin:0 0 4px;color:#94a3b8;font-size:12px;font-weight:600;">&copy; ${new Date().getFullYear()} Roombaazi &mdash; All rights reserved.</p>
+                <p style="margin:0;color:#cbd5e1;font-size:11px;">Finding perfect rooms, made simple.</p>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+`;
 
 type ProfilePayload = {
   fullName?: unknown;

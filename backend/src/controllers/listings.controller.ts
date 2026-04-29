@@ -418,6 +418,7 @@ type ListingEntryPayload = {
     singleBedCount?: number;
     doubleBedCount?: number;
     rentTiers?: { occupants: number; rent: number }[];
+    roomFor?: "Male" | "Female" | "Any";
   }>;
 };
 
@@ -563,6 +564,7 @@ export const createListingsWithMedia = async (
             singleBedCount: room.singleBedCount,
             doubleBedCount: room.doubleBedCount,
             rentTiers: Array.isArray(room.rentTiers) ? room.rentTiers : undefined,
+            roomFor: room.roomFor as "Male" | "Female" | "Any" | undefined,
           },
           photos,
           location: fullLocation,

@@ -60,6 +60,7 @@ type ListingDetails = {
   bedType: string | null;
   singleBedCount: number | null;
   doubleBedCount: number | null;
+  roomFor: string | null;
   coverPhotoUrl: string | null;
   photos: ListingPhoto[];
 };
@@ -395,6 +396,7 @@ export default function ListingDetailsPage() {
         ...(item.bedType ? [{ label: "Bed Type", value: item.bedType, icon: <BedDouble size={16} /> }] : []),
         ...(item.singleBedCount ? [{ label: "Single Beds", value: String(item.singleBedCount), icon: <BedDouble size={16} /> }] : []),
         ...(item.doubleBedCount ? [{ label: "Double Beds", value: String(item.doubleBedCount), icon: <BedDouble size={16} /> }] : []),
+        ...(item.roomFor ? [{ label: "Room For", value: item.roomFor, icon: <Users size={16} /> }] : []),
       ]
     : [];
 

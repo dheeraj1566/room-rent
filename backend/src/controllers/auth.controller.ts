@@ -52,52 +52,75 @@ const generateGooglePhonePlaceholder = (): string => {
 
 const buildVerifyEmailHtml = (verifyLink: string, fullName: string) => `
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Confirm Your Email – Roombaazi</title>
   </head>
-  <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#f4f6f8;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8;padding:32px 0;">
+  <body style="margin:0;padding:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;background-color:#f1f5f9;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:48px 0 32px;">
       <tr>
         <td align="center">
-          <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+          <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(15,23,42,0.12);">
+
+            <!-- TOP ACCENT BAR -->
             <tr>
-              <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#f59e0b 100%);padding:32px;text-align:center;">
-                <img src="${escapeHtml(env.EMAIL_LOGO_URL || "")}" alt="Roombaazi" width="140" style="max-width:140px;" />
+              <td style="background:linear-gradient(90deg,#0f172a,#1e3a5f,#f59e0b,#fb923c,#f59e0b,#1e3a5f,#0f172a);height:5px;font-size:0;line-height:0;">&nbsp;</td>
+            </tr>
+
+            <!-- LOGO ON WHITE -->
+            <tr>
+              <td align="center" style="background:#ffffff;padding:28px 40px 20px;">
+                ${env.EMAIL_LOGO_URL
+                  ? `<img src="${env.EMAIL_LOGO_URL}" alt="Roombaazi" height="52" style="height:52px;width:auto;max-width:180px;display:block;margin:0 auto;" />`
+                  : `<span style="color:#0f172a;font-size:26px;font-weight:900;letter-spacing:-0.5px;font-family:Arial,sans-serif;">Room<span style="color:#f59e0b;">baazi</span></span>`}
               </td>
             </tr>
+
+            <!-- DARK HERO BANNER -->
             <tr>
-              <td style="padding:36px 40px 12px;">
-                <h2 style="margin:0 0 12px;color:#0f172a;font-size:22px;">Hi ${escapeHtml(fullName)}, welcome to Roombaazi! 🎉</h2>
-                <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
-                  You're almost ready to start finding your perfect room.<br />
-                  Just tap the button below to confirm your email address and activate your account.
+              <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#0f172a 100%);padding:36px 44px 32px;text-align:center;">
+                <p style="margin:0 0 12px;font-size:40px;line-height:1;">🎉</p>
+                <h1 style="margin:0 0 10px;color:#ffffff;font-size:22px;font-weight:800;line-height:1.3;">Hi ${escapeHtml(fullName)}, you're almost in!</h1>
+                <p style="margin:0;color:#94a3b8;font-size:14px;line-height:1.6;">Confirm your email to activate your Roombaazi account</p>
+              </td>
+            </tr>
+
+            <!-- BODY -->
+            <tr>
+              <td style="padding:36px 44px 8px;">
+                <p style="margin:0 0 28px;color:#475569;font-size:15px;line-height:1.75;">
+                  Thanks for joining Roombaazi! Click the button below to verify your email address and start exploring rooms.
                 </p>
-                <table cellpadding="0" cellspacing="0" style="margin:0 auto 28px;">
+
+                <!-- CTA BUTTON -->
+                <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
                   <tr>
-                    <td align="center" bgcolor="#f59e0b" style="border-radius:8px;">
+                    <td align="center" style="border-radius:10px;background:linear-gradient(135deg,#f59e0b 0%,#fb923c 100%);box-shadow:0 4px 18px rgba(245,158,11,0.45);">
                       <a href="${escapeHtml(verifyLink)}" target="_blank"
-                        style="display:inline-block;padding:14px 36px;color:#0f172a;font-size:15px;font-weight:700;text-decoration:none;border-radius:8px;letter-spacing:0.3px;">
-                        Confirm My Email
+                        style="display:inline-block;padding:15px 48px;color:#0f172a;font-size:16px;font-weight:800;text-decoration:none;border-radius:10px;letter-spacing:0.3px;">
+                        Confirm My Email &rarr;
                       </a>
                     </td>
                   </tr>
                 </table>
-                <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;text-align:center;">
-                  This link expires in 24 hours. If you didn't create an account, you can safely ignore this email.
+
+                <p style="margin:0 0 6px;color:#94a3b8;font-size:12px;text-align:center;line-height:1.6;">
+                  Link expires in <strong>24 hours</strong> &middot; Didn't sign up? Safely ignore this email.
                 </p>
-                <p style="margin:0;color:#cbd5e1;font-size:11px;text-align:center;word-break:break-all;">
-                  ${escapeHtml(verifyLink)}
-                </p>
+                <p style="margin:0 0 24px;color:#cbd5e1;font-size:11px;text-align:center;word-break:break-all;">${escapeHtml(verifyLink)}</p>
               </td>
             </tr>
+
+            <!-- FOOTER -->
             <tr>
-              <td style="padding:20px 40px 32px;text-align:center;color:#94a3b8;font-size:12px;border-top:1px solid #f1f5f9;">
-                © ${new Date().getFullYear()} Roombaazi. All rights reserved.
+              <td style="padding:18px 44px 28px;text-align:center;background:#f8fafc;border-top:1px solid #f1f5f9;">
+                <p style="margin:0 0 4px;color:#94a3b8;font-size:12px;font-weight:600;">&copy; ${new Date().getFullYear()} Roombaazi &mdash; All rights reserved.</p>
+                <p style="margin:0;color:#cbd5e1;font-size:11px;">Finding perfect rooms, made simple.</p>
               </td>
             </tr>
+
           </table>
         </td>
       </tr>
@@ -108,55 +131,85 @@ const buildVerifyEmailHtml = (verifyLink: string, fullName: string) => `
 
 const buildResetPasswordEmailHtml = (otpCode: string, resetLink: string) => `
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Reset Your Password</title>
+    <title>Reset Your Password – Roombaazi</title>
   </head>
-  <body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color:#f4f6f8;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8; padding: 20px;">
+  <body style="margin:0;padding:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;background-color:#f1f5f9;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:48px 0 32px;">
       <tr>
         <td align="center">
-          <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:10px; padding:30px;">
+          <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(15,23,42,0.12);">
+
+            <!-- TOP ACCENT BAR -->
             <tr>
-              <td align="center" style="padding-bottom:20px;">
-                <img src="${escapeHtml(env.EMAIL_LOGO_URL || "https://via.placeholder.com/120x40?text=Roombaazi")}" alt="Roombaazi" width="120" />
+              <td style="background:linear-gradient(90deg,#0f172a,#1e3a5f,#f59e0b,#fb923c,#f59e0b,#1e3a5f,#0f172a);height:5px;font-size:0;line-height:0;">&nbsp;</td>
+            </tr>
+
+            <!-- LOGO ON WHITE -->
+            <tr>
+              <td align="center" style="background:#ffffff;padding:28px 40px 20px;">
+                ${env.EMAIL_LOGO_URL
+                  ? `<img src="${env.EMAIL_LOGO_URL}" alt="Roombaazi" height="52" style="height:52px;width:auto;max-width:180px;display:block;margin:0 auto;" />`
+                  : `<span style="color:#0f172a;font-size:26px;font-weight:900;letter-spacing:-0.5px;font-family:Arial,sans-serif;">Room<span style="color:#f59e0b;">baazi</span></span>`}
               </td>
             </tr>
+
+            <!-- DARK HERO BANNER -->
             <tr>
-              <td align="center">
-                <h2 style="margin:0; color:#333;">Reset Your Password</h2>
+              <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#0f172a 100%);padding:36px 44px 32px;text-align:center;">
+                <p style="margin:0 0 12px;font-size:40px;line-height:1;">🔒</p>
+                <h1 style="margin:0 0 10px;color:#ffffff;font-size:22px;font-weight:800;line-height:1.3;">Reset Your Password</h1>
+                <p style="margin:0;color:#94a3b8;font-size:14px;line-height:1.6;">Use the OTP below or click the button to set a new password</p>
               </td>
             </tr>
+
+            <!-- BODY -->
             <tr>
-              <td style="padding:20px 0; color:#555; font-size:15px; text-align:center;">
-                We received a request to reset your password.<br />
-                Use the OTP below or click the button to continue.
+              <td style="padding:36px 44px 8px;">
+                <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.75;">
+                  We received a request to reset your Roombaazi password. Your one-time code is:
+                </p>
+
+                <!-- OTP BOX -->
+                <table cellpadding="0" cellspacing="0" style="margin:0 auto 28px;">
+                  <tr>
+                    <td align="center" style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:12px;padding:18px 36px;">
+                      <span style="font-size:32px;font-weight:900;letter-spacing:10px;color:#0f172a;font-family:'Courier New',monospace;">${escapeHtml(otpCode)}</span>
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin:0 0 20px;color:#64748b;font-size:13px;text-align:center;">Or click the button below to go directly to the reset page:</p>
+
+                <!-- CTA BUTTON -->
+                <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+                  <tr>
+                    <td align="center" style="border-radius:10px;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);box-shadow:0 4px 18px rgba(15,23,42,0.35);">
+                      <a href="${escapeHtml(resetLink)}" target="_blank"
+                        style="display:inline-block;padding:15px 48px;color:#f59e0b;font-size:16px;font-weight:800;text-decoration:none;border-radius:10px;letter-spacing:0.3px;">
+                        Reset Password &rarr;
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin:0 0 6px;color:#94a3b8;font-size:12px;text-align:center;line-height:1.6;">
+                  OTP expires in <strong>${RESET_OTP_TTL_MINUTES} minutes</strong> &middot; Didn't request this? Safely ignore this email.
+                </p>
               </td>
             </tr>
+
+            <!-- FOOTER -->
             <tr>
-              <td align="center" style="padding:20px 0;">
-                <div style="display:inline-block;background:#f1f5f9;padding:15px 25px;border-radius:8px;font-size:24px;letter-spacing:5px;font-weight:bold;color:#0f172a;">
-                  ${escapeHtml(otpCode)}
-                </div>
+              <td style="padding:18px 44px 28px;text-align:center;background:#f8fafc;border-top:1px solid #f1f5f9;">
+                <p style="margin:0 0 4px;color:#94a3b8;font-size:12px;font-weight:600;">&copy; ${new Date().getFullYear()} Roombaazi &mdash; All rights reserved.</p>
+                <p style="margin:0;color:#cbd5e1;font-size:11px;">Finding perfect rooms, made simple.</p>
               </td>
             </tr>
-            <tr>
-              <td align="center" style="padding:20px;">
-                <a href="${escapeHtml(resetLink)}" style="background: linear-gradient(90deg, #0f4c75, #f59e0b);color:#ffffff;text-decoration:none;padding:12px 25px;border-radius:6px;font-size:15px;display:inline-block;">
-                  Reset Password
-                </a>
-              </td>
-            </tr>
-            <tr>
-              <td style="text-align:center; font-size:13px; color:#888;">This OTP will expire in ${RESET_OTP_TTL_MINUTES} minutes.</td>
-            </tr>
-            <tr>
-              <td style="padding-top:30px; text-align:center; font-size:12px; color:#aaa;">
-                If you didn't request this, you can safely ignore this email.
-              </td>
-            </tr>
+
           </table>
         </td>
       </tr>

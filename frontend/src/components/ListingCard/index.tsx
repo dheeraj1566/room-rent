@@ -11,6 +11,7 @@ type ListingCardProps = {
   rentTiers: { occupants: number; rent: number }[];
   maxOccupants: number;
   landlordGender: string | null;
+  roomFor: string | null;
   propertyTypeId: number | null;
   furnishingName: string;
   foodPreferenceName: string;
@@ -46,6 +47,7 @@ export default function ListingCard({
   maxOccupants,
   propertyTypeId,
   furnishingName,
+  roomFor,
   coverPhotoUrl,
   isFavorited,
   onToggleFavorite,
@@ -137,6 +139,12 @@ export default function ListingCard({
             <BedDouble size={14} />
             Amenities
           </span>
+          {roomFor ? (
+            <span className="listing-card-meta-item">
+              <Users size={14} />
+              {roomFor}
+            </span>
+          ) : null}
         </div>
       </div>
     </article>

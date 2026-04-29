@@ -36,6 +36,7 @@ export interface CreateListingDto {
     singleBedCount?: number;
     doubleBedCount?: number;
     rentTiers?: { occupants: number; rent: number }[];
+    roomFor?: "Male" | "Female" | "Any";
   };
   photos?: {
     photoType: "Room" | "Exterior";
@@ -84,6 +85,7 @@ export interface ListingItem {
   statusName: string;
   landlordName: string;
   landlordGender: string | null;
+  roomFor: string | null;
   coverPhotoUrl: string | null;
   createdAt: string;
 }
@@ -127,6 +129,7 @@ export interface ListingDetailsItem {
   statusName: string;
   landlordName: string;
   landlordGender: string | null;
+  roomFor: string | null;
   bedType: string | null;
   singleBedCount: number | null;
   doubleBedCount: number | null;
@@ -190,6 +193,7 @@ export class ListingsService {
       statusName: doc.status,
       landlordName: doc.landlordName ?? "",
       landlordGender: doc.landlordGender ?? null,
+      roomFor: doc.roomFor ?? null,
       coverPhotoUrl: coverPhoto?.photoUrl ?? null,
       rentTiers: (doc.rentTiers ?? []).map((t) => ({ occupants: t.occupants, rent: t.rent })),
       createdAt: doc.createdAt?.toISOString() ?? "",
@@ -329,6 +333,7 @@ export class ListingsService {
         ? data.roomDetails.rentTiers
         : undefined,
       securityDeposit: data.roomDetails.securityDeposit ?? undefined,
+      roomFor: data.roomDetails.roomFor ?? undefined,
       availableFrom: new Date(data.roomDetails.availableFrom),
       addressLine: data.location.addressLine,
       colony: data.location.colony,
@@ -612,7 +617,7 @@ export class ListingsService {
     // Execute query with populate
     const [listings, total] = await Promise.all([
       Listing.find(query)
-        .populate("landlordId", "fullName gender")
+        .populate("landlordId", "fullName")
         .sort(sort)
         .skip(offset)
         .limit(limit)
@@ -620,28 +625,23 @@ export class ListingsService {
       Listing.countDocuments(query),
     ]);
 
-    // Gender filter (post-query since it's on the populated user)
+    // Room-for filter (stored directly on the listing)
     let filteredListings = listings;
     if (filters.gender && filters.gender.length > 0) {
       const normalizedGenders = filters.gender
         .map((g) => g.trim().toLowerCase())
-        .filter((g) => g === "male" || g === "female" || g === "other")
-        .map((g): "Male" | "Female" | "Other" => {
-          if (g === "male") return "Male";
-          if (g === "female") return "Female";
-          return "Other";
-        });
+        .filter((g) => g === "male" || g === "female" || g === "any");
 
       if (normalizedGenders.length > 0) {
         filteredListings = listings.filter((listing) => {
-          const landlord = listing.landlordId as unknown as { fullName?: string; gender?: string };
-          return !!(landlord?.gender && normalizedGenders.includes(landlord.gender as "Male" | "Female" | "Other"));
+          const rf = (listing.roomFor ?? "").toLowerCase();
+          return rf === "any" || normalizedGenders.includes(rf);
         });
       }
     }
 
     const items: ListingItem[] = filteredListings.map((listing) => {
-      const landlord = listing.landlordId as unknown as { _id: unknown; fullName?: string; gender?: string };
+      const landlord = listing.landlordId as unknown as { _id: unknown; fullName?: string };
       const coverPhoto = this.findCoverPhoto((listing.photos as IListingPhoto[]) || []);
 
       return {
@@ -671,7 +671,8 @@ export class ListingsService {
         statusId: LISTING_STATUSES_BY_NAME[listing.status] ?? 1,
         statusName: listing.status,
         landlordName: landlord?.fullName ?? "",
-        landlordGender: landlord?.gender ?? null,
+        landlordGender: null,
+        roomFor: listing.roomFor ?? null,
         coverPhotoUrl: coverPhoto?.photoUrl ?? null,
         rentTiers: (listing.rentTiers as IRentTier[] | undefined ?? []).map((t) => ({ occupants: t.occupants, rent: t.rent })),
         createdAt: listing.createdAt?.toISOString() ?? "",
@@ -684,12 +685,12 @@ export class ListingsService {
   // ─── Get Listing By ID ────────────────────────────────────
   static async getListingById(listingId: string): Promise<ListingDetailsItem | null> {
     const listing = await Listing.findById(listingId)
-      .populate("landlordId", "fullName gender")
+      .populate("landlordId", "fullName")
       .lean();
 
     if (!listing) return null;
 
-    const landlord = listing.landlordId as unknown as { _id: unknown; fullName?: string; gender?: string };
+    const landlord = listing.landlordId as unknown as { _id: unknown; fullName?: string };
     const photos: ListingPhotoItem[] = (listing.photos || []).map((p) => ({
       photoType: p.photoType,
       photoUrl: p.photoUrl,
@@ -740,7 +741,8 @@ export class ListingsService {
       statusId: LISTING_STATUSES_BY_NAME[listing.status] ?? 1,
       statusName: listing.status,
       landlordName: landlord?.fullName ?? "",
-      landlordGender: landlord?.gender ?? null,
+      landlordGender: null,
+      roomFor: listing.roomFor ?? null,
       bedType: listing.bedType ?? null,
       singleBedCount: listing.singleBedCount ?? null,
       doubleBedCount: listing.doubleBedCount ?? null,

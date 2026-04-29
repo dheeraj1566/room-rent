@@ -24,6 +24,7 @@ type Listing = {
   rentTiers: { occupants: number; rent: number }[];
   maxOccupants: number;
   landlordGender: string | null;
+  roomFor: string | null;
   propertyTypeId: number | null;
   furnishingName: string;
   foodPreferenceName?: string;
@@ -192,6 +193,7 @@ export default function Home() {
                       rentTiers={item.rentTiers ?? []}
                       maxOccupants={item.maxOccupants}
                       landlordGender={item.landlordGender}
+                      roomFor={item.roomFor}
                       propertyTypeId={item.propertyTypeId}
                       furnishingName={item.furnishingName}
                       foodPreferenceName={item.foodPreferenceName ?? ""}

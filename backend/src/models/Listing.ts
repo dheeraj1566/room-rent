@@ -30,6 +30,7 @@ export interface IListing extends Document {
   bedType?: "Single" | "Double" | "Mixed";
   singleBedCount?: number;
   doubleBedCount?: number;
+  roomFor?: "Male" | "Female" | "Any";
   monthlyRent: number;
   rentTiers?: IRentTier[];
   securityDeposit?: number;
@@ -88,6 +89,7 @@ const listingSchema = new Schema<IListing>(
     bedType: { type: String, enum: ["Single", "Double", "Mixed"] },
     singleBedCount: { type: Number },
     doubleBedCount: { type: Number },
+    roomFor: { type: String, enum: ["Male", "Female", "Any"] },
     monthlyRent: { type: Number, required: true, min: 0 },
     rentTiers: { type: [rentTierSchema], default: undefined },
     securityDeposit: { type: Number },

@@ -30,6 +30,7 @@ type RoomForm = {
   availableFrom: string;
   description: string;
   allowSmoking: boolean;
+  roomFor: "Male" | "Female" | "Any" | "";
   roomImages: (File | null)[];
   roomImagePreviews: string[];
 };
@@ -109,6 +110,7 @@ const createRoom = (): RoomForm => ({
   availableFrom: "",
   description: "",
   allowSmoking: false,
+  roomFor: "",
   roomImages: [null, null, null],
   roomImagePreviews: ["", "", ""],
 });
@@ -276,8 +278,7 @@ export default function AddListing() {
         (needsAdvanced && (room.bedType === "Double" || room.bedType === "Mixed") && room.doubleBedCount === "") ||
         (needsAdvanced && room.securityDepositType === "") ||
         (needsAdvanced && room.securityDepositType === "custom" && room.securityDepositAmount === "") ||
-        !room.availableFrom ||
-        !room.description.trim()
+        !room.availableFrom
       ) {
         return "Please complete all room details before publishing.";
       }
@@ -356,6 +357,7 @@ export default function AddListing() {
           availableFrom: room.availableFrom,
           description: room.description.trim(),
           allowSmoking: room.allowSmoking,
+          roomFor: room.roomFor || undefined,
           rentTiers: room.rentTiers
             .filter(tier => tier.rent !== "" && tier.rent !== null)
             .map(tier => ({
@@ -774,6 +776,23 @@ export default function AddListing() {
                       </div>
 
                       <div className="field">
+                        <label>Room For</label>
+                        <div className="radio-inline" style={{ minHeight: 56 }}>
+                          {(["Male", "Female", "Any"] as const).map((option) => (
+                            <label key={option} className="checkbox-item">
+                              <input
+                                type="radio"
+                                checked={room.roomFor === option}
+                                onChange={() => updateRoom(room.id, { roomFor: option })}
+                                name={`roomFor-${room.id}`}
+                              />
+                              <span>{option}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="field">
                         <label>Smoking Allowed</label>
                         <div className="radio-inline" style={{ minHeight: 56 }}>
                           <label className="checkbox-item">
@@ -798,9 +817,9 @@ export default function AddListing() {
                       </div>
 
                       <div className="field" style={{ gridColumn: "1 / -1" }}>
-                        <label>Description *</label>
+                        <label>Description</label>
                         <textarea
-                          className={`textarea-style${step2Submitted && !room.description.trim() ? " input-error" : ""}`}
+                          className="textarea-style"
                           value={room.description}
                           onChange={(e) => updateRoom(room.id, { description: e.target.value })}
                           placeholder="Add highlights of this property"
