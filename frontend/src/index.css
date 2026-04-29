@@ -1216,6 +1216,16 @@ select.select-style::-ms-expand {
   gap: 28px;
 }
 
+.details-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 24px;
+}
+
+.details-layout--loaded {
+  align-items: start;
+}
+
 .filter-panel,
 .sort-bar,
 .dashboard-hero,
@@ -2062,6 +2072,12 @@ select.select-style::-ms-expand {
 }
 
 /* Tablet portrait — collapse sidebar to full width */
+@media (max-width: 780px) {
+  .details-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 768px) {
   .filter-mobile-toggle {
     display: inline-flex;
@@ -2257,6 +2273,10 @@ select.select-style::-ms-expand {
 }
 
 @media (max-width: 420px) {
+  .listing-grid {
+    grid-template-columns: 1fr;
+  }
+
   /* Ultra-compact navbar for very small screens */
   .app-navbar-inner {
     min-height: 58px;

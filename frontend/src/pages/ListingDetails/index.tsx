@@ -5,6 +5,7 @@ import {
   BedDouble,
   CalendarDays,
   Clock3,
+  Heart,
   Home,
   MapPin,
   Pencil,
@@ -153,6 +154,10 @@ export default function ListingDetailsPage() {
 
   const [myConnection, setMyConnection] = useState<ConnectionStatus>(null);
   const [connectingOwner, setConnectingOwner] = useState(false);
+  const [cancellingRequest, setCancellingRequest] = useState(false);
+
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [togglingFavorite, setTogglingFavorite] = useState(false);
 
   const canEdit = Boolean(user && item && user.id === item.landlordId);
 
@@ -272,8 +277,39 @@ export default function ListingDetailsPage() {
     void loadMyReview(item.landlordId, item.listingId);
     if (user && user.id !== item.landlordId) {
       void loadConnectionStatus(item.listingId);
+      apiFetch<{ ids: string[] }>("/api/favorites/ids", { method: "GET" })
+        .then((data) => setIsFavorited(data.ids.includes(item.listingId)))
+        .catch(() => {});
     }
   }, [item?.landlordId, item?.listingId, user?.id]);
+
+  const handleCancelRequest = async () => {
+    if (!myConnection) return;
+    setCancellingRequest(true);
+    try {
+      await apiFetch(`/api/connections/${myConnection.connectionId}`, { method: "DELETE" });
+      setMyConnection(null);
+      showToast("Request cancelled", "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Failed to cancel request", "error");
+    } finally {
+      setCancellingRequest(false);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!item || !user) return;
+    setTogglingFavorite(true);
+    try {
+      const data = await apiFetch<{ liked: boolean }>(`/api/favorites/${item.listingId}`, { method: "POST" });
+      setIsFavorited(data.liked);
+      showToast(data.liked ? "Added to liked properties" : "Removed from liked properties", "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Failed to update favorite", "error");
+    } finally {
+      setTogglingFavorite(false);
+    }
+  };
 
   const handleConnectOwner = async () => {
     if (!item || !user) return;
@@ -408,7 +444,7 @@ export default function ListingDetailsPage() {
         <section className="page-section">
           <div className="page-container">
             {loading ? (
-              <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 340px", gap: 24 }}>
+              <div className="details-layout">
                 <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                   <div className="surface-card" style={{ padding: 18 }}>
                     <Skeleton style={{ width: "100%", aspectRatio: "1.6 / 1", borderRadius: 22 }} />
@@ -426,7 +462,7 @@ export default function ListingDetailsPage() {
             ) : errorMsg ? (
               <div className="error-banner">{errorMsg}</div>
             ) : item ? (
-              <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 340px", gap: 24, alignItems: "start" }}>
+              <div className="details-layout details-layout--loaded">
                 <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
                   <section className="surface-card" style={{ padding: 18 }}>
                     <div
@@ -764,18 +800,27 @@ export default function ListingDetailsPage() {
                             {connectingOwner ? "Sending Request..." : "Connect Owner"}
                           </button>
                         ) : myConnection.status === "Pending" ? (
-                          <div
-                            style={{
-                              padding: "12px 14px",
-                              borderRadius: 16,
-                              background: "#fff7e8",
-                              border: "1px solid rgba(255,154,61,0.45)",
-                              color: "#b96817",
-                              fontWeight: 700,
-                              fontSize: "0.88rem",
-                            }}
-                          >
-                            Request Pending - awaiting owner response
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            <div
+                              style={{
+                                padding: "12px 14px",
+                                borderRadius: 16,
+                                background: "#fff7e8",
+                                border: "1px solid rgba(255,154,61,0.45)",
+                                color: "#b96817",
+                                fontWeight: 700,
+                                fontSize: "0.88rem",
+                              }}
+                            >
+                              Request Pending - awaiting owner response
+                            </div>
+                            <button
+                              className="btn btn-outline btn-block"
+                              onClick={() => void handleCancelRequest()}
+                              disabled={cancellingRequest}
+                            >
+                              {cancellingRequest ? "Cancelling..." : "Cancel Request"}
+                            </button>
                           </div>
                         ) : myConnection.status === "Rejected" ? (
                           <div
@@ -807,6 +852,19 @@ export default function ListingDetailsPage() {
                           </div>
                         )}
                       </div>
+                    ) : null}
+
+                    {!canEdit && user ? (
+                      <button
+                        className={`btn btn-outline btn-block${isFavorited ? " active" : ""}`}
+                        style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10 }}
+                        onClick={() => void handleToggleFavorite()}
+                        disabled={togglingFavorite}
+                        aria-label={isFavorited ? "Remove from favorites" : "Save to favorites"}
+                      >
+                        <Heart size={16} fill={isFavorited ? "currentColor" : "none"} style={{ color: isFavorited ? "var(--red-500)" : undefined }} />
+                        {isFavorited ? "Saved" : "Save Property"}
+                      </button>
                     ) : null}
 
                     <button className="btn btn-outline btn-block" onClick={() => navigate("/browse")}>

@@ -324,3 +324,41 @@ export const dealClose = async (
     next(error);
   }
 };
+
+// DELETE /api/connections/:id
+// Tenant cancels their own pending request
+export const cancelRequest = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const tenantId = (req as any).user?.id;
+    if (!tenantId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    let { id } = req.params;
+    if (Array.isArray(id)) id = id[0];
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({ error: "Invalid connection id" });
+      return;
+    }
+
+    const connection = await ContactRequest.findOneAndDelete({
+      _id: new mongoose.Types.ObjectId(id),
+      tenantId: new mongoose.Types.ObjectId(tenantId),
+      status: "Pending",
+    });
+
+    if (!connection) {
+      res.status(404).json({ error: "Pending request not found" });
+      return;
+    }
+
+    res.status(200).json({ message: "Request cancelled" });
+  } catch (error) {
+    next(error);
+  }
+};
