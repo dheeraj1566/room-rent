@@ -79,8 +79,16 @@ export default function Home() {
         <section className="hero-panel dot-grid hero-gradient">
           <div className="page-container home-hero">
             <div>
-              <div style={{ marginBottom: 28 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
                 <img src={brandLogo} alt="Roombaazi" style={{ height: 48, width: "auto" }} />
+                <div style={{ display: "flex", gap: 10 }}>
+                  <Link to="/login" className="btn btn-outline" style={{ padding: "8px 20px", fontSize: 14 }}>
+                    Login
+                  </Link>
+                  <Link to="/register" className="btn btn-dark" style={{ padding: "8px 20px", fontSize: 14 }}>
+                    Register
+                  </Link>
+                </div>
               </div>
               <span className="badge badge-soft">
                 <Star size={14} fill="currentColor" />

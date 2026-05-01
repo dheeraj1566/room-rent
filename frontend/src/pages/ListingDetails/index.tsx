@@ -4,6 +4,8 @@ import {
   BadgeIndianRupee,
   BedDouble,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   Home,
   MapPin,
@@ -134,7 +136,7 @@ export default function ListingDetailsPage() {
   const [item, setItem] = useState<ListingDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
-  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [sliderIndex, setSliderIndex] = useState(0);
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -231,7 +233,7 @@ export default function ListingDetailsPage() {
     try {
       const data = await apiFetch<ListingDetails>(`/api/listings/${listingId}`, { method: "GET" });
       setItem(data);
-      setSelectedPhoto(data.coverPhotoUrl || data.photos[0]?.photoUrl || null);
+      setSliderIndex(0);
 
       const exterior = data.photos.find((photo) => photo.photoType === "Exterior")?.photoUrl || "";
       const roomUrls = data.photos
@@ -445,63 +447,81 @@ export default function ListingDetailsPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
                   <section className="surface-card" style={{ padding: 18 }}>
                     <div
-                      className="dot-grid"
                       style={{
+                        position: "relative",
                         borderRadius: 26,
                         overflow: "hidden",
                         border: "1px solid var(--border-color)",
+                        background: "var(--slate-100)",
+                        aspectRatio: "1.68 / 1",
                       }}
                     >
-                      <div style={{ width: "100%", aspectRatio: "1.68 / 1", background: "var(--slate-100)" }}>
-                        {selectedPhoto ? (
-                          <img
-                            src={selectedPhoto}
-                            alt={item.title}
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                          />
-                        ) : (
-                          <div className="listing-card-placeholder">
-                            <Home size={72} />
-                            <span style={{ fontWeight: 700 }}>NO IMAGE YET</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                      {allPhotos.length > 0 ? (
+                        <img
+                          key={sliderIndex}
+                          src={allPhotos[sliderIndex].photoUrl}
+                          alt={item.title}
+                          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                        />
+                      ) : (
+                        <div className="listing-card-placeholder" style={{ height: "100%" }}>
+                          <Home size={72} />
+                          <span style={{ fontWeight: 700 }}>NO IMAGE YET</span>
+                        </div>
+                      )}
 
-                    {allPhotos.length > 0 ? (
-                      <div style={{ display: "flex", gap: 12, marginTop: 14, overflowX: "auto", paddingBottom: 2 }}>
-                        {allPhotos.map((photo, index) => (
+                      {allPhotos.length > 1 && (
+                        <>
                           <button
-                            key={`${photo.photoType}-${photo.displayOrder}-${index}`}
-                            onClick={() => setSelectedPhoto(photo.photoUrl)}
+                            onClick={() => setSliderIndex((i) => (i - 1 + allPhotos.length) % allPhotos.length)}
                             style={{
-                              width: 98,
-                              minWidth: 98,
-                              height: 76,
-                              borderRadius: 18,
-                              overflow: "hidden",
-                              padding: 0,
-                              border:
-                                selectedPhoto === photo.photoUrl
-                                  ? "2px solid var(--orange-500)"
-                                  : "1px solid var(--border-color)",
-                              boxShadow:
-                                selectedPhoto === photo.photoUrl
-                                  ? "0 8px 18px rgba(255,154,61,0.18)"
-                                  : "none",
-                              background: "white",
-                              cursor: "pointer",
+                              position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
+                              width: 38, height: 38, borderRadius: "50%", border: "none",
+                              background: "rgba(255,255,255,0.88)", cursor: "pointer",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
                             }}
                           >
-                            <img
-                              src={photo.photoUrl}
-                              alt={`${photo.photoType} ${photo.displayOrder}`}
-                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                            />
+                            <ChevronLeft size={20} />
                           </button>
-                        ))}
-                      </div>
-                    ) : null}
+                          <button
+                            onClick={() => setSliderIndex((i) => (i + 1) % allPhotos.length)}
+                            style={{
+                              position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+                              width: 38, height: 38, borderRadius: "50%", border: "none",
+                              background: "rgba(255,255,255,0.88)", cursor: "pointer",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
+                            }}
+                          >
+                            <ChevronRight size={20} />
+                          </button>
+                          <div
+                            style={{
+                              position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)",
+                              display: "flex", gap: 6,
+                            }}
+                          >
+                            {allPhotos.map((_, i) => (
+                              <button
+                                key={i}
+                                onClick={() => setSliderIndex(i)}
+                                style={{
+                                  width: i === sliderIndex ? 20 : 8,
+                                  height: 8,
+                                  borderRadius: 4,
+                                  border: "none",
+                                  background: i === sliderIndex ? "var(--orange-500)" : "rgba(255,255,255,0.7)",
+                                  cursor: "pointer",
+                                  padding: 0,
+                                  transition: "width 0.2s, background 0.2s",
+                                }}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </section>
 
                   <section className="surface-card" style={{ padding: 28 }}>
