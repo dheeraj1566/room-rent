@@ -240,7 +240,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     return;
   }
   if (!isNonEmptyString(password) || !isValidPassword(password)) {
-    ErrorResponses.badRequest(res, "Password must be at least 6 characters");
+    ErrorResponses.badRequest(res, "Password must be 8–24 characters with at least 1 letter and 1 number");
     return;
   }
   if (!isValidGender(gender)) {

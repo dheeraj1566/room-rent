@@ -27,7 +27,7 @@ router.post("/image", requireAuth, upload.single("image"), async (req, res) => {
     const uploadResult = await BlobService.uploadImage(req.file);
 
     res.status(201).json({
-      message: "Image uploaded",
+      message: "Image uploaded successfully",
       url: uploadResult.accessUrl,
       blobUrl: uploadResult.blobUrl,
       blobId: uploadResult.blobId,

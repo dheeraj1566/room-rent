@@ -18,7 +18,7 @@ export const connectOwner = async (
       return;
     }
 
-    const { listingId } = req.body as { listingId?: string };
+    const { listingId, occupants } = req.body as { listingId?: string; occupants?: number };
     if (!listingId || !mongoose.Types.ObjectId.isValid(listingId)) {
       res.status(400).json({ error: "Valid listingId is required" });
       return;
@@ -56,6 +56,7 @@ export const connectOwner = async (
       tenantId: new mongoose.Types.ObjectId(tenantId),
       listingId: new mongoose.Types.ObjectId(listingId),
       landlordId: new mongoose.Types.ObjectId(landlordId),
+      occupants: occupants && occupants > 0 ? occupants : undefined,
       status: "Pending",
       isConnected: false,
     });
@@ -198,7 +199,7 @@ export const getLandlordConnections = async (
         .select("fullName email phone photoUrl")
         .lean(),
       Listing.find({ _id: { $in: listingIds } })
-        .select("title colony city monthlyRent")
+        .select("title colony city monthlyRent maxOccupants")
         .lean(),
     ]);
 
@@ -218,6 +219,11 @@ export const getLandlordConnections = async (
         listingId: String(c.listingId),
         listingTitle: listing ? `${listing.title} · ${listing.colony}, ${listing.city}` : "Unknown Listing",
         monthlyRent: listing?.monthlyRent ?? 0,
+        maxOccupants: listing?.maxOccupants ?? 0,
+        requestedOccupants: c.occupants ?? null,
+        rentPayments: Array.isArray(c.rentPayments)
+          ? [...c.rentPayments].sort((a, b) => b.month.localeCompare(a.month))
+          : [],
         status: c.status,
         isConnected: c.isConnected,
         requestedAt: c.createdAt.toISOString(),
@@ -231,8 +237,137 @@ export const getLandlordConnections = async (
   }
 };
 
+// PATCH /api/connections/:id/rent-payment
+// Landlord marks whether a tenant paid rent OnTime or Late for current month
+// A saved month's status can be corrected only once
+export const markMonthlyRentPayment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const landlordId = (req as any).user?.id;
+    if (!landlordId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    let { id } = req.params;
+    if (Array.isArray(id)) id = id[0];
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({ error: "Invalid connection id" });
+      return;
+    }
+
+    const { month, paymentStatus } = req.body as {
+      month?: string;
+      paymentStatus?: "OnTime" | "Late";
+      paymentSlipUrl?: string;
+      paymentSlipBlobId?: string;
+    };
+
+    if (!month || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+      res.status(400).json({ error: "month is required in YYYY-MM format" });
+      return;
+    }
+
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    if (month !== currentMonth) {
+      res.status(400).json({
+        error: "Only current month is allowed",
+        currentMonth,
+      });
+      return;
+    }
+
+    if (!paymentStatus || !["OnTime", "Late"].includes(paymentStatus)) {
+      res.status(400).json({ error: "paymentStatus must be OnTime or Late" });
+      return;
+    }
+
+    const connection = await ContactRequest.findOne({
+      _id: new mongoose.Types.ObjectId(id),
+      landlordId: new mongoose.Types.ObjectId(landlordId),
+    });
+
+    if (!connection) {
+      res.status(404).json({ error: "Connection not found" });
+      return;
+    }
+
+    if (connection.status !== "Accepted") {
+      res.status(400).json({ error: "Rent status can only be updated for accepted tenants" });
+      return;
+    }
+
+    const { paymentSlipUrl, paymentSlipBlobId } = req.body as {
+      paymentSlipUrl?: string;
+      paymentSlipBlobId?: string;
+    };
+
+    const existingIndex = connection.rentPayments.findIndex((entry) => entry.month === month);
+    if (existingIndex >= 0) {
+      const existingEntry = connection.rentPayments[existingIndex];
+
+      const statusChanged = existingEntry.paymentStatus !== paymentStatus;
+      const slipUrlChanged = (paymentSlipUrl ?? "") !== (existingEntry.paymentSlipUrl ?? "");
+      const slipBlobChanged = (paymentSlipBlobId ?? "") !== (existingEntry.paymentSlipBlobId ?? "");
+      const hasChange = statusChanged || slipUrlChanged || slipBlobChanged;
+
+      if (!hasChange) {
+        res.status(200).json({
+          message: `Rent payment for ${month} is already up to date`,
+          connectionId: String(connection._id),
+          rentPayments: [...connection.rentPayments].sort((a, b) => b.month.localeCompare(a.month)),
+        });
+        return;
+      }
+
+      const usedUpdates = existingEntry.updateCount ?? 0;
+      if (usedUpdates >= 1) {
+        res.status(400).json({
+          error: "Update limit reached",
+          message: "You can update rent status only one time after first save for the current month",
+        });
+        return;
+      }
+
+      connection.rentPayments[existingIndex].paymentStatus = paymentStatus;
+      connection.rentPayments[existingIndex].markedAt = new Date();
+      connection.rentPayments[existingIndex].updateCount = usedUpdates + 1;
+      if (paymentSlipUrl) {
+        connection.rentPayments[existingIndex].paymentSlipUrl = paymentSlipUrl;
+        connection.rentPayments[existingIndex].paymentSlipBlobId = paymentSlipBlobId;
+      }
+    } else {
+      connection.rentPayments.push({
+        month,
+        paymentStatus,
+        markedAt: new Date(),
+        updateCount: 0,
+        paymentSlipUrl,
+        paymentSlipBlobId,
+      });
+    }
+
+    await connection.save();
+
+    const rentPayments = [...connection.rentPayments].sort((a, b) => b.month.localeCompare(a.month));
+
+    res.status(200).json({
+      message: `Rent payment for ${month} marked as ${paymentStatus === "OnTime" ? "On Time" : "Late"}`,
+      connectionId: String(connection._id),
+      rentPayments,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // PATCH /api/connections/:id/deal-done
 // Landlord marks deal as done → isConnected = true, status = Accepted
+// Validates that tenant's occupant requirement matches room capacity
 export const dealDone = async (
   req: Request,
   res: Response,
@@ -252,7 +387,38 @@ export const dealDone = async (
       return;
     }
 
-    const connection = await ContactRequest.findOneAndUpdate(
+    // First, get the connection details
+    const connection = await ContactRequest.findOne({
+      _id: new mongoose.Types.ObjectId(id),
+      landlordId: new mongoose.Types.ObjectId(landlordId),
+    }).lean();
+
+    if (!connection) {
+      res.status(404).json({ error: "Connection not found" });
+      return;
+    }
+
+    // If tenant specified occupants, validate against room capacity
+    if (connection.occupants) {
+      const listing = await Listing.findById(connection.listingId).select("maxOccupants").lean();
+      if (!listing) {
+        res.status(404).json({ error: "Listing not found" });
+        return;
+      }
+
+      if (connection.occupants > listing.maxOccupants) {
+        res.status(400).json({
+          error: "Occupant validation failed",
+          message: `Tenant requested ${connection.occupants} occupant(s) but room capacity is only ${listing.maxOccupants}`,
+          requestedOccupants: connection.occupants,
+          maxOccupants: listing.maxOccupants,
+        });
+        return;
+      }
+    }
+
+    // Update the connection
+    const updatedConnection = await ContactRequest.findOneAndUpdate(
       {
         _id: new mongoose.Types.ObjectId(id),
         landlordId: new mongoose.Types.ObjectId(landlordId),
@@ -267,7 +433,7 @@ export const dealDone = async (
       { new: true }
     );
 
-    if (!connection) {
+    if (!updatedConnection) {
       res.status(404).json({ error: "Connection not found" });
       return;
     }

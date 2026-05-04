@@ -8,8 +8,6 @@ import {
   parseNumberArray,
   parseStringArray,
   parseBooleanArray,
-  parseGenderArray,
-  parseInteger,
   parseSortBy,
 } from "../utils/queryParsers.js";
 
@@ -99,10 +97,7 @@ export const getAllListings = async (
       sortBy: parseSortBy(req.query.sortBy as string),
     };
 
-    const result = await ListingsService.getAllListings(page, limit, filters);
-    const { items, total } = result;
-    
-    console.log("[GET /api/listings] total:", total, "| items returned:", items.length);
+    const { items, total } = await ListingsService.getAllListings(page, limit, filters);
 
     res.status(200).json({
       page,
@@ -308,7 +303,6 @@ export const createSingleListing = async (
       return;
     }
 
-    // 2. Create Listing
     const payload = {
       landlordId,
       roomDetails: {
@@ -332,10 +326,6 @@ export const createSingleListing = async (
       location: fullLocation,
     };
 
-    if (!fullLocation) {
-      res.status(400).json({ error: "Location could not be determined" });
-      return;
-    }
     const listingId = await ListingsService.createSingleListing({ ...payload, location: fullLocation });
 
     res.status(201).json({
@@ -376,11 +366,6 @@ export const createBulkListings = async (
       return;
     }
 
-    // 2. Bulk Insert array
-    if (!fullLocation) {
-      res.status(400).json({ error: "Location could not be determined" });
-      return;
-    }
     const listingIds = await ListingsService.createBulkListings(
       landlordId,
       rooms,
@@ -812,6 +797,37 @@ export const getMyListings = async (
     // Use getAllListings with a landlord filter since getMyListings does not exist
     const { items } = await ListingsService.getAllListings(1, 100, { landlordId });
     res.status(200).json({ listings: items });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const toggleListingStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const landlordId = (req as any).user?.id;
+    if (!landlordId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    let { listingId } = req.params;
+    if (Array.isArray(listingId)) listingId = listingId[0];
+    if (!listingId) {
+      res.status(400).json({ error: "listingId is required" });
+      return;
+    }
+
+    const newStatus = await ListingsService.toggleListingStatus(listingId, landlordId);
+    if (!newStatus) {
+      res.status(404).json({ error: "Listing not found or not owned by you" });
+      return;
+    }
+
+    res.status(200).json({ message: "Status updated", status: newStatus });
   } catch (error) {
     next(error);
   }

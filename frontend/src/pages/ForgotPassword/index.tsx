@@ -55,44 +55,24 @@ export default function ForgotPassword() {
   const remaining = OTP_RESEND_LIMIT - resendCount;
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "1rem",
-        background: "var(--bg-color)",
-      }}
-    >
-      <div style={{ width: "100%", maxWidth: "440px" }}>
-        <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
+    <div className="auth-shell">
+      <div className="auth-container">
+        <div className="auth-header">
           <img
             src={brandLogo}
             alt="Roombaazi"
-            style={{ width: "210px", maxWidth: "100%", margin: "0 auto 0.75rem", display: "block" }}
+            className="auth-logo"
           />
-          <p style={{ color: "var(--text-muted)" }}>Password reset instructions will be sent to your email.</p>
+          <p className="auth-subtitle">Password reset instructions will be sent to your email.</p>
         </div>
 
         <div className="glass-card">
-          <h2 style={{ marginBottom: "1.25rem", textAlign: "center" }}>Forgot Password</h2>
+          <h2 className="text-center mb-5">Forgot Password</h2>
 
           {/* Static info banner — always visible */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: "0.6rem",
-              padding: "0.75rem 1rem",
-              background: "#fffbeb",
-              border: "1px solid #fde68a",
-              borderRadius: "8px",
-              marginBottom: "1rem",
-            }}
-          >
-            <Info size={16} style={{ color: "#d97706", flexShrink: 0, marginTop: "2px" }} />
-            <p style={{ margin: 0, fontSize: "0.85rem", color: "#92400e", lineHeight: 1.5 }}>
+          <div className="alert-info">
+            <Info size={16} className="alert-icon" />
+            <p className="alert-content">
               You can request an OTP up to <strong>{OTP_RESEND_LIMIT} times</strong> per 24 hours.
               {resendCount > 0 && (
                 <span>
@@ -106,35 +86,16 @@ export default function ForgotPassword() {
           </div>
 
           {message && (
-            <div
-              style={{
-                padding: "0.75rem",
-                background: "#eef9f1",
-                border: "1px solid #b7e4c7",
-                borderRadius: "8px",
-                marginBottom: "1rem",
-              }}
-            >
-              <p style={{ color: "#146c43", margin: 0, fontSize: "0.9rem" }}>{message}</p>
+            <div className="alert-success">
+              <p className="alert-content">{message}</p>
             </div>
           )}
 
           {/* Error / limit-hit banner */}
           {errorMsg && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "0.6rem",
-                padding: "0.75rem 1rem",
-                background: isLimitHit ? "#fef2f2" : "#fee",
-                border: `1px solid ${isLimitHit ? "#fca5a5" : "#fcc"}`,
-                borderRadius: "8px",
-                marginBottom: "1rem",
-              }}
-            >
-              <AlertTriangle size={16} style={{ color: "#dc2626", flexShrink: 0, marginTop: "2px" }} />
-              <p style={{ color: "#991b1b", margin: 0, fontSize: "0.9rem", lineHeight: 1.5 }}>{errorMsg}</p>
+            <div className={`alert-error ${!isLimitHit ? 'severe' : ''}`}>
+              <AlertTriangle size={16} className="alert-icon" />
+              <p className="alert-content">{errorMsg}</p>
             </div>
           )}
 
@@ -156,13 +117,13 @@ export default function ForgotPassword() {
             </button>
           </form>
 
-          <div style={{ marginTop: "1.25rem", textAlign: "center" }}>
-            <Link to="/reset-password" style={{ color: "var(--brand-secondary)", fontWeight: 600, textDecoration: "none" }}>
+          <div className="auth-links">
+            <Link to="/reset-password" className="auth-link">
               Already have OTP? Reset now
             </Link>
           </div>
-          <div style={{ marginTop: "0.75rem", textAlign: "center" }}>
-            <Link to="/login" style={{ color: "var(--text-muted)", textDecoration: "none" }}>
+          <div className="auth-links">
+            <Link to="/login" className="auth-link muted">
               Back to Login
             </Link>
           </div>

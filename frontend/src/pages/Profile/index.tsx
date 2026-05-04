@@ -249,7 +249,13 @@ export default function ProfilePage() {
                           <label>Aadhaar</label>
                           <input
                             className="input-style"
-                            value={form.aadhaar ? form.aadhaar.replace(/(\d{4})(?=\d)/g, "$1-") : ""}
+                            value={
+                              isAadhaarLocked && form.aadhaar
+                                ? `XXXX-XXXX-${form.aadhaar}`
+                                : form.aadhaar
+                                  ? form.aadhaar.replace(/(\d{4})(?=\d)/g, "$1-")
+                                  : ""
+                            }
                             onChange={(event) =>
                               setForm((prev) => {
                                 if (isAadhaarLocked) return prev;

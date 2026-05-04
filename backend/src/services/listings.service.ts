@@ -161,49 +161,9 @@ export interface LocationOption {
 }
 
 export class ListingsService {
-  /**
-   * Converts a Mongoose listing document to the API response format
-   */
-  private static toListingItem(
-    doc: IListing & { landlordName?: string; landlordGender?: string | null }
-  ): ListingItem {
-    const coverPhoto = this.findCoverPhoto(doc.photos || []);
-
-    return {
-      listingId: String(doc._id),
-      landlordId: String(doc.landlordId),
-      title: doc.title,
-      colony: doc.colony,
-      city: doc.city,
-      monthlyRent: doc.monthlyRent,
-      floorLevelId: FLOOR_LEVELS_BY_NAME[doc.floorLevel] ?? 0,
-      furnishingTypeId: FURNISHING_TYPES_BY_NAME[doc.furnishingType] ?? 0,
-      maxOccupants: doc.maxOccupants,
-      allowSmoking: doc.allowSmoking,
-      foodPreferenceId: FOOD_PREFERENCES_BY_NAME[doc.foodPreference] ?? 0,
-      coolingTypeId: doc.coolingType ? (COOLING_TYPES_BY_NAME[doc.coolingType] ?? null) : null,
-      propertyTypeId: doc.propertyType ? (PROPERTY_TYPES_BY_NAME[doc.propertyType] ?? null) : null,
-      availableFrom: doc.availableFrom?.toISOString().split("T")[0] ?? "",
-      floorName: doc.floorLevel,
-      furnishingName: doc.furnishingType,
-      preferenceName: doc.foodPreference,
-      coolingTypeName: doc.coolingType ?? null,
-      propertyTypeName: doc.propertyType ?? null,
-      statusId: LISTING_STATUSES_BY_NAME[doc.status] ?? 1,
-      statusName: doc.status,
-      landlordName: doc.landlordName ?? "",
-      landlordGender: doc.landlordGender ?? null,
-      roomFor: doc.roomFor ?? null,
-      coverPhotoUrl: coverPhoto?.photoUrl ?? null,
-      rentTiers: (doc.rentTiers ?? []).map((t) => ({ occupants: t.occupants, rent: t.rent })),
-      createdAt: doc.createdAt?.toISOString() ?? "",
-    };
-  }
-
   private static findCoverPhoto(photos: IListingPhoto[]): IListingPhoto | null {
     if (!photos || photos.length === 0) return null;
-    // Prefer exterior, then room
-    return photos.find((p) => p.photoType === "Exterior") || photos[0] || null;
+    return photos.find((p) => p.photoType === "Room") || photos[0] || null;
   }
 
   private static generateTitle(colony: string, furnishingTypeId: number): string {
@@ -506,6 +466,15 @@ export class ListingsService {
     return (result.matchedCount ?? 0) > 0;
   }
 
+  // ─── Toggle Listing Visibility (Active ↔ Paused) ─────────
+  static async toggleListingStatus(listingId: string, landlordId: string): Promise<string | null> {
+    const listing = await Listing.findOne({ _id: listingId, landlordId, isActive: true });
+    if (!listing) return null;
+    const newStatus = listing.status === "Active" ? "Paused" : "Active";
+    await Listing.updateOne({ _id: listingId, landlordId }, { $set: { status: newStatus } });
+    return newStatus;
+  }
+
   // ─── Soft Delete Listing ──────────────────────────────────
   static async deleteListingById(listingId: string, landlordId: string): Promise<boolean> {
     const result = await Listing.updateOne(
@@ -524,7 +493,10 @@ export class ListingsService {
     const offset = (page - 1) * limit;
 
     // Build filter query
-    const query: Record<string, unknown> = { status: "Active", isActive: true };
+    // When viewing own listings, include all statuses (Active + Paused)
+    const query: Record<string, unknown> = filters.landlordId
+      ? { isActive: true }
+      : { status: "Active", isActive: true };
 
     // Search
     if (filters.search && filters.search.trim()) {

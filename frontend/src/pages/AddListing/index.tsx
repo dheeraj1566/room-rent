@@ -132,6 +132,7 @@ export default function AddListing() {
   const [exteriorFile, setExteriorFile] = useState<File | null>(null);
   const [exteriorPreview, setExteriorPreview] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [step1Loading, setStep1Loading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [step1Submitted, setStep1Submitted] = useState(false);
   const [step2Submitted, setStep2Submitted] = useState(false);
@@ -229,13 +230,18 @@ export default function AddListing() {
     }
 
     setErrorMsg("");
-    const result = await forwardGeocode(composedAddress);
-    if (result) {
-      setCoords({ latitude: result.lat, longitude: result.lng });
-    } else {
-      setCoords(null);
+    setStep1Loading(true);
+    try {
+      const result = await forwardGeocode(composedAddress);
+      if (result) {
+        setCoords({ latitude: result.lat, longitude: result.lng });
+      } else {
+        setCoords(null);
+      }
+      setStep(2);
+    } finally {
+      setStep1Loading(false);
     }
-    setStep(2);
   };
 
   const handleRoomImage = (roomId: string, index: number, file: File | null) => {
@@ -484,8 +490,8 @@ export default function AddListing() {
                 {errorMsg ? <div className="error-banner" style={{ marginTop: 20 }}>{errorMsg}</div> : null}
 
                 <div className="form-actions" style={{ justifyContent: "flex-end" }}>
-                  <button className="btn btn-dark" onClick={() => void handleStepOne()}>
-                    Continue to Room Details
+                  <button className="btn btn-dark" onClick={() => void handleStepOne()} disabled={step1Loading}>
+                    {step1Loading ? "Locating address..." : "Continue to Room Details"}
                     <ArrowRight size={18} />
                   </button>
                 </div>
@@ -532,16 +538,45 @@ export default function AddListing() {
                 </div>
 
                 {rooms.map((room, roomIndex) => (
-                  <div key={room.id} className="form-panel" style={{ marginBottom: 22 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", marginBottom: 18 }}>
-                      <h3 style={{ fontSize: "1.45rem" }}>Room {roomIndex + 1}</h3>
+                  <div key={room.id} className="form-panel" style={{ marginBottom: 22, padding: 0, overflow: "hidden" }}>
+                    {/* Room card header strip */}
+                    <div style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "14px 24px",
+                      background: "linear-gradient(90deg, var(--navy-900, #0f172a), var(--navy-800, #1e3a5f))",
+                      borderRadius: "inherit",
+                      borderBottomLeftRadius: 0,
+                      borderBottomRightRadius: 0,
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <span style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: 32,
+                          height: 32,
+                          borderRadius: "50%",
+                          background: "var(--orange-500, #f59e0b)",
+                          color: "#0f172a",
+                          fontWeight: 900,
+                          fontSize: "0.95rem",
+                        }}>{roomIndex + 1}</span>
+                        <h3 style={{ fontSize: "1.15rem", color: "#fff", margin: 0 }}>Room {roomIndex + 1}</h3>
+                      </div>
                       {rooms.length > 1 ? (
-                        <button className="btn btn-outline btn-sm" onClick={() => setRooms((prev) => prev.filter((item) => item.id !== room.id))}>
-                          <Trash2 size={16} />
+                        <button
+                          className="btn btn-outline btn-sm"
+                          style={{ borderColor: "rgba(255,255,255,0.25)", color: "#fff" }}
+                          onClick={() => setRooms((prev) => prev.filter((item) => item.id !== room.id))}
+                        >
+                          <Trash2 size={15} />
                           Remove
                         </button>
                       ) : null}
                     </div>
+                    <div style={{ padding: 24 }}>
 
                     <div className="field-grid-2">
                       {(() => {
@@ -865,6 +900,7 @@ export default function AddListing() {
                           </>
                         );
                       })()}
+                    </div>
                     </div>
                   </div>
                 ))}

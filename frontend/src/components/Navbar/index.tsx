@@ -1,8 +1,13 @@
-import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { User, ArrowRightToLine, Plus, Heart, Menu, X, Inbox } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { User, ArrowRightToLine, Plus, Heart, Menu, X, Inbox, Bell } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import brandLogo from "../../assets/Roombaazi Final Logo.png";
+import {
+  getTenantRequestNotifications,
+  subscribeToNotificationUpdates,
+  type TenantRequestNotification,
+} from "../../lib/notifications";
 
 const routeAliases: Record<string, string[]> = {
   browse: ["/browse", "/listings", "/listings/"],
@@ -18,11 +23,16 @@ const matchAlias = (pathname: string, aliases: string[]) =>
 
 export default function Navbar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [isCompact, setIsCompact] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const notificationsRef = useRef<HTMLDivElement | null>(null);
+  const [notifications, setNotifications] = useState<TenantRequestNotification[]>([]);
   const isAuthenticated = Boolean(user);
+  const unreadCount = notifications.length;
   const profileCompletionFields = [
     Boolean(user?.hasFullName),
     Boolean(user?.hasEmail),
@@ -100,6 +110,34 @@ export default function Navbar() {
     };
   }, [isMobileMenuOpen]);
 
+  useEffect(() => {
+    const onMouseDown = (event: MouseEvent) => {
+      if (!notificationsRef.current) return;
+      if (!notificationsRef.current.contains(event.target as Node)) {
+        setIsNotificationsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", onMouseDown);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    setIsNotificationsOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const syncFromStorage = () => {
+      setNotifications(getTenantRequestNotifications());
+    };
+
+    syncFromStorage();
+    const unsubscribe = subscribeToNotificationUpdates(syncFromStorage);
+    return unsubscribe;
+  }, []);
+
   const closeMobileMenu = () => {
     setIsClosing(true);
     setTimeout(() => {
@@ -118,6 +156,11 @@ export default function Navbar() {
 
   const handleMenuItemClick = () => {
     closeMobileMenu();
+  };
+
+  const handleNotificationClick = (connectionId: string) => {
+    setIsNotificationsOpen(false);
+    navigate(`/dashboard?request=${connectionId}`);
   };
 
   return (
@@ -166,6 +209,53 @@ export default function Navbar() {
                 >
                   <Heart size={20} />
                 </Link>
+                <div className="nav-notifications" ref={notificationsRef}>
+                  <button
+                    type="button"
+                    className={`icon-pill notification-trigger ${isNotificationsOpen ? "active" : ""}`}
+                    aria-label="Notifications"
+                    aria-expanded={isNotificationsOpen}
+                    onClick={() => setIsNotificationsOpen((prev) => !prev)}
+                  >
+                    <Bell size={20} />
+                    {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+                  </button>
+                  {isNotificationsOpen && (
+                    <div className="notification-dropdown" role="menu" aria-label="Notifications">
+                      <div className="notification-header">
+                        <h4>Notifications</h4>
+                      </div>
+                      <div className="notification-list">
+                        {notifications.length === 0 ? (
+                          <div className="notification-empty">
+                            <p>No new notifications</p>
+                          </div>
+                        ) : (
+                          notifications.map((item) => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              className="notification-item unread"
+                              role="menuitem"
+                              onClick={() => handleNotificationClick(item.connectionId)}
+                            >
+                              <p className="notification-title">Request from tenant</p>
+                              <p className="notification-message">
+                                {item.tenantName} requested to contact your {item.listingTitle}.
+                              </p>
+                              <span className="notification-time">
+                                {new Date(item.requestedAt).toLocaleDateString("en-IN", {
+                                  day: "numeric",
+                                  month: "short",
+                                })}
+                              </span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <Link
                   to="/profile"
                   className={`nav-link nav-link-profile ${matchAlias(location.pathname, routeAliases.profile) ? "active" : ""}`}
@@ -190,14 +280,66 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <button 
-            className="mobile-menu-btn"
-            onClick={handleMobileMenuToggle}
-            aria-label="Toggle mobile menu"
-          >
-            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          <div className="mobile-actions">
+            {isAuthenticated ? (
+              <div className="nav-notifications mobile-notifications" ref={notificationsRef}>
+                <button
+                  type="button"
+                  className={`icon-pill notification-trigger ${isNotificationsOpen ? "active" : ""}`}
+                  aria-label="Notifications"
+                  aria-expanded={isNotificationsOpen}
+                  onClick={() => setIsNotificationsOpen((prev) => !prev)}
+                >
+                  <Bell size={20} />
+                  {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+                </button>
+                {isNotificationsOpen && (
+                  <div className="notification-dropdown" role="menu" aria-label="Notifications">
+                    <div className="notification-header">
+                      <h4>Notifications</h4>
+                    </div>
+                    <div className="notification-list">
+                      {notifications.length === 0 ? (
+                        <div className="notification-empty">
+                          <p>No new notifications</p>
+                        </div>
+                      ) : (
+                        notifications.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            className="notification-item unread"
+                            role="menuitem"
+                            onClick={() => handleNotificationClick(item.connectionId)}
+                          >
+                            <p className="notification-title">Request from tenant</p>
+                            <p className="notification-message">
+                              {item.tenantName} requested to contact your {item.listingTitle}.
+                            </p>
+                            <span className="notification-time">
+                              {new Date(item.requestedAt).toLocaleDateString("en-IN", {
+                                day: "numeric",
+                                month: "short",
+                              })}
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
+
+            {/* Mobile Menu Button */}
+            <button
+              className="mobile-menu-btn"
+              onClick={handleMobileMenuToggle}
+              aria-label="Toggle mobile menu"
+            >
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
       </header>
 

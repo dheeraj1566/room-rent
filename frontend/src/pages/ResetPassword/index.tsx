@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import { apiFetch } from "../../lib/api";
 import brandLogo from "../../assets/Roombaazi Final Logo.png";
 
@@ -14,6 +15,8 @@ export default function ResetPassword() {
   const [otpCode, setOtpCode] = useState(otpFromLink.replace(/\D/g, "").slice(0, 6));
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -60,55 +63,30 @@ export default function ResetPassword() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "1rem",
-        background: "var(--bg-color)",
-      }}
-    >
-      <div style={{ width: "100%", maxWidth: "460px" }}>
-        <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
+    <div className="auth-shell">
+      <div className="auth-container">
+        <div className="auth-header">
           <img
             src={brandLogo}
             alt="Roombaazi"
-            style={{ width: "210px", maxWidth: "100%", margin: "0 auto 0.75rem", display: "block" }}
+            className="auth-logo"
           />
-          <p style={{ color: "var(--text-muted)" }}>
+          <p className="auth-subtitle">
             {tokenFromLink ? "Reset token detected from your email link." : "Enter OTP from email to reset password."}
           </p>
         </div>
 
         <div className="glass-card">
-          <h2 style={{ marginBottom: "1.25rem", textAlign: "center" }}>Reset Password</h2>
+          <h2 className="text-center mb-5">Reset Password</h2>
 
           {successMsg && (
-            <div
-              style={{
-                padding: "0.75rem",
-                background: "#eef9f1",
-                border: "1px solid #b7e4c7",
-                borderRadius: "8px",
-                marginBottom: "1rem",
-              }}
-            >
-              <p style={{ color: "#146c43", margin: 0, fontSize: "0.9rem" }}>{successMsg}</p>
+            <div className="alert-success">
+              <p className="alert-content">{successMsg}</p>
             </div>
           )}
           {errorMsg && (
-            <div
-              style={{
-                padding: "0.75rem",
-                background: "#fee",
-                border: "1px solid #fcc",
-                borderRadius: "8px",
-                marginBottom: "1rem",
-              }}
-            >
-              <p style={{ color: "#c33", margin: 0, fontSize: "0.9rem" }}>{errorMsg}</p>
+            <div className="alert-error">
+              <p className="alert-content">{errorMsg}</p>
             </div>
           )}
 
@@ -138,26 +116,46 @@ export default function ResetPassword() {
 
             <div className="form-group">
               <label>New Password</label>
-              <input
-                type="password"
-                className="input-style"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password"
-                required
-              />
+              <div className="password-input-wrapper">
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  className="input-style password-input"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  aria-label={showNewPassword ? "Hide password" : "Show password"}
+                >
+                  {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <div className="form-group">
               <label>Confirm Password</label>
-              <input
-                type="password"
-                className="input-style"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter new password"
-                required
-              />
+              <div className="password-input-wrapper">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  className="input-style password-input"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter new password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <button className="btn btn-primary w-full" type="submit" disabled={loading}>
@@ -165,13 +163,13 @@ export default function ResetPassword() {
             </button>
           </form>
 
-          <div style={{ marginTop: "1rem", textAlign: "center" }}>
-            <Link to="/forgot-password" style={{ color: "var(--brand-secondary)", fontWeight: 600, textDecoration: "none" }}>
+          <div className="auth-links">
+            <Link to="/forgot-password" className="auth-link">
               Need new OTP? Send again
             </Link>
           </div>
-          <div style={{ marginTop: "0.75rem", textAlign: "center" }}>
-            <Link to="/login" style={{ color: "var(--text-muted)", textDecoration: "none" }}>
+          <div className="auth-links">
+            <Link to="/login" className="auth-link muted">
               Back to Login
             </Link>
           </div>

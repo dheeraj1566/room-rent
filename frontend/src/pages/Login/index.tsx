@@ -121,28 +121,19 @@ export default function Login() {
 
               <div className="field">
                 <label>Password</label>
-                <div style={{ position: "relative" }}>
+                <div className="password-input-wrapper">
                   <input
-                    className="input-style"
+                    className="input-style password-input"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     placeholder="Enter your password"
-                    style={{ paddingRight: 54 }}
                     required
                   />
                   <button
                     type="button"
+                    className="password-toggle"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    style={{
-                      position: "absolute",
-                      right: 18,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      background: "transparent",
-                      color: "var(--slate-600)",
-                      cursor: "pointer",
-                    }}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}

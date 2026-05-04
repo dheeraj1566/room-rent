@@ -58,11 +58,15 @@ export function normalizeFullName(name: string): string {
 }
 
 /**
- * Validate password strength (minimum requirements)
+ * Validate password: 8–24 characters, at least 1 letter, at least 1 digit
  */
 export function isValidPassword(password: string): boolean {
-  // At least 6 characters for now - can be enhanced later
-  return password.length >= 6;
+  return (
+    password.length >= 8 &&
+    password.length <= 24 &&
+    /[a-zA-Z]/.test(password) &&
+    /\d/.test(password)
+  );
 }
 
 /**

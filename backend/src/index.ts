@@ -3,8 +3,6 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
-import path from "node:path";
-import fs from "node:fs";
 import swaggerUi from "swagger-ui-express";
 
 import env from "./config/env";
@@ -14,11 +12,6 @@ import routes from "./routes/index";
 import { errorHandler, notFoundHandler } from "./middlewares/errorHandler";
 
 const app = express();
-const uploadsDir = path.join(process.cwd(), "uploads");
-
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
 
 // --------------- Middleware ---------------
 app.use(helmet());
@@ -36,7 +29,6 @@ app.use((_req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use("/uploads", express.static(uploadsDir));
 app.get("/api/docs.json", (_req, res) => {
   res.status(200).json(swaggerSpec);
 });

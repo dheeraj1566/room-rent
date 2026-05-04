@@ -22,23 +22,18 @@ export default function Register() {
   const passwordRules = [
     {
       key: "length",
-      label: "Minimum 8 to Maximum 20 characters allowed",
-      valid: password.length >= 8 && password.length <= 20,
+      label: "8 to 24 characters",
+      valid: password.length >= 8 && password.length <= 24,
     },
     {
-      key: "alphabets",
-      label: "Password must contain at least one small and one capital alphabet",
-      valid: /[a-z]/.test(password) && /[A-Z]/.test(password),
+      key: "letter",
+      label: "At least 1 letter (a–z or A–Z)",
+      valid: /[a-zA-Z]/.test(password),
     },
     {
-      key: "numberSpecial",
-      label: "At least one Numeric digit and one special character (@#$%^&* etc.)",
-      valid: /\d/.test(password) && /[@#$%^&*!?]/.test(password),
-    },
-    {
-      key: "noSequence",
-      label: "Password should not contain any sequence or repeated numbers like 123, 000, 111 , abc , aaa etc.",
-      valid: !(/123|234|345|456|567|678|789|890|abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uv+w|vwx|wxy|xyz|000|111|222|333|444|555|666|777|888|999|aaa|bbb|ccc|ddd|eee|fff|ggg|hhh|iii|jjj|kkk|lll|mmm|nnn|ooo|ppp|qqq|rrr|sss|ttt|uuu|vvv|www|xxx|yyy|zzz/i.test(password)),
+      key: "number",
+      label: "At least 1 number (0–9)",
+      valid: /\d/.test(password),
     },
   ];
 
@@ -61,7 +56,7 @@ export default function Register() {
   const hasStartedPassword = password.length > 0;
   const bottomError = errorMsg || Object.values(fieldErrors)[0] || "";
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMsg("");
     const nextErrors = validateForm();
@@ -194,9 +189,9 @@ export default function Register() {
 
               <div className="field" style={{ marginBottom: 18 }}>
                 <label>Password</label>
-                <div style={{ position: "relative" }}>
+                <div className="password-input-wrapper">
                   <input
-                    className={`input-style ${fieldErrors.password ? "input-error" : ""}`}
+                    className={`input-style password-input ${fieldErrors.password ? "input-error" : ""}`}
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(event) => {
@@ -204,21 +199,13 @@ export default function Register() {
                       setFieldErrors((prev) => ({ ...prev, password: "" }));
                     }}
                     placeholder="Enter a strong password"
-                    style={{ paddingRight: 54 }}
                     required
                   />
                   <button
                     type="button"
+                    className="password-toggle"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    style={{
-                      position: "absolute",
-                      right: 18,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      background: "transparent",
-                      color: "var(--slate-600)",
-                      cursor: "pointer",
-                    }}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -237,9 +224,9 @@ export default function Register() {
 
               <div className="field">
                 <label>Confirm Password</label>
-                <div style={{ position: "relative" }}>
+                <div className="password-input-wrapper">
                   <input
-                    className={`input-style ${fieldErrors.confirmPassword ? "input-error" : ""}`}
+                    className={`input-style password-input ${fieldErrors.confirmPassword ? "input-error" : ""}`}
                     type={showConfirmPassword ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(event) => {
@@ -247,21 +234,13 @@ export default function Register() {
                       setFieldErrors((prev) => ({ ...prev, confirmPassword: "" }));
                     }}
                     placeholder="Re-enter your password"
-                    style={{ paddingRight: 54 }}
                     required
                   />
                   <button
                     type="button"
+                    className="password-toggle"
                     onClick={() => setShowConfirmPassword((prev) => !prev)}
-                    style={{
-                      position: "absolute",
-                      right: 18,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      background: "transparent",
-                      color: "var(--slate-600)",
-                      cursor: "pointer",
-                    }}
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                   >
                     {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>

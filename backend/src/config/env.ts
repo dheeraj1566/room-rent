@@ -69,12 +69,18 @@ export const env = {
 
   // Auth
   JWT_SECRET: process.env.JWT_SECRET || "default_development_secret_key_change_in_prod",
-  // COOKIE_SAME_SITE:
-  //   (process.env.COOKIE_SAME_SITE?.toLowerCase() === "strict"
-  //     ? "strict"
-  //     : process.env.COOKIE_SAME_SITE?.toLowerCase() === "none"
-  //       ? "none"
-  //       : "lax") as "lax" | "strict" | "none",
+  
+  // Watermark Configuration
+  WATERMARK_TEXT: process.env.WATERMARK_TEXT || "Roombaazi",
+  WATERMARK_OPACITY: parseFloat(process.env.WATERMARK_OPACITY || "0.4"),
+  WATERMARK_POSITION: (process.env.WATERMARK_POSITION || "bottom-right") as 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center',
+  WATERMARK_COLOR: process.env.WATERMARK_COLOR || "#FFFFFF",
+  WATERMARK_ENABLED: process.env.WATERMARK_ENABLED !== "false",
+
+  // Encryption Configuration (for sensitive data like Aadhaar)
+  ENCRYPTION_KEY: process.env.ENCRYPTION_KEY || "",
+  ENCRYPTION_IV_LENGTH: process.env.ENCRYPTION_IV_LENGTH || "16",
+  ENCRYPTION_ALGORITHM: process.env.ENCRYPTION_ALGORITHM || "aes-256-cbc",
 } as const;
 
 export default env;

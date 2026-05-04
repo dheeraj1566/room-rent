@@ -6,6 +6,7 @@ import {
   getLandlordConnections,
   dealDone,
   dealClose,
+  markMonthlyRentPayment,
   cancelRequest,
 } from "../controllers/connections.controller";
 import { requireAuth } from "../middlewares/auth.middleware";
@@ -21,6 +22,7 @@ router.get("/my-status/:listingId", getMyConnectionStatus); // Tenant: check the
 router.get("/landlord", getLandlordConnections);             // Landlord: see all connection requests
 router.patch("/:id/deal-done", dealDone);                   // Landlord: mark deal done → isConnected = true
 router.patch("/:id/deal-close", dealClose);                 // Landlord: close deal → status = Rejected
+router.patch("/:id/rent-payment", markMonthlyRentPayment);  // Landlord: mark monthly rent payment as OnTime/Late
 router.delete("/:id", cancelRequest);                       // Tenant: cancel pending request
 
 export default router;

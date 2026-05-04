@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import crypto from "node:crypto";
 import nodemailer from "nodemailer";
 import User from "../models/User.js";
+import { CryptoService } from "../services/crypto.service.js";
 import env from "../config/env.js";
 
 const mailer = nodemailer.createTransport({
@@ -132,14 +133,28 @@ const getProfileByUserId = async (userId: string) => {
     email: user.email ?? null,
     location: user.permanentAddress ?? null,
     aadhaar: (() => {
-      const raw = user.aadhaarEncrypted as unknown;
-      if (!raw) return null;
-      // Mongoose lean() returns BSON Binary, not a Node.js Buffer
-      if (Buffer.isBuffer(raw)) return (raw as Buffer).toString('utf8') || null;
-      // BSON Binary: has .buffer (Uint8Array) property
-      const bsonBuf = (raw as { buffer?: Uint8Array }).buffer;
-      if (bsonBuf) return Buffer.from(bsonBuf).toString('utf8') || null;
-      return null;
+      const encryptedBuffer = user.aadhaarEncrypted;
+      if (!encryptedBuffer || encryptedBuffer.length === 0) return null;
+      
+      try {
+        // Handle both Buffer and BSON Binary objects from MongoDB
+        let buffer: Buffer;
+        if (Buffer.isBuffer(encryptedBuffer)) {
+          buffer = encryptedBuffer;
+        } else {
+          // BSON Binary: has .buffer (Uint8Array) property
+          const bsonBuf = (encryptedBuffer as { buffer?: Uint8Array }).buffer;
+          if (!bsonBuf) return null;
+          buffer = Buffer.from(bsonBuf);
+        }
+        
+        // Return only last 4 digits — never expose full Aadhaar to client
+        const decrypted = CryptoService.decrypt(buffer);
+        return decrypted.slice(-4);
+      } catch (error) {
+        console.error('Failed to decrypt Aadhaar:', error);
+        return null;
+      }
     })(),
     phone: (() => {
       const p = user.phone ?? null;
@@ -208,9 +223,10 @@ const saveProfile = async (
     if (user.aadhaarEncrypted) {
       throw new Error("IMMUTABLE_AADHAAR");
     }
-    // Store as encrypted buffer and hash
-    updates.aadhaarEncrypted = Buffer.from(aadhaar, "utf8");
-    updates.aadhaarHash = crypto.createHash("sha256").update(aadhaar).digest();
+    // Encrypt Aadhaar and create hash for uniqueness checking
+    const { encrypted, hash } = CryptoService.encryptWithHash(aadhaar);
+    updates.aadhaarEncrypted = encrypted;
+    updates.aadhaarHash = hash;
   }
 
   // Phone

@@ -1,5 +1,11 @@
 import { createRequire } from "node:module";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import env from "../config/env.js";
+import { WatermarkService } from "./watermark.service.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 type UploadedBlob = {
   blobId: string;
@@ -163,8 +169,22 @@ export class BlobService {
     const safeExt = /^[a-z0-9]+$/.test(originalExt) ? originalExt : "jpg";
     const blobId = `${Date.now()}-${Math.round(Math.random() * 1e9)}.${safeExt}`;
 
+    let processedBuffer = file.buffer;
+
+    if (env.WATERMARK_ENABLED) {
+      try {
+        const logoPath = path.join(__dirname, "../assets/logo.png");
+        processedBuffer = await WatermarkService.addLogoWatermark(file.buffer, logoPath, {
+          opacity: env.WATERMARK_OPACITY,
+          position: env.WATERMARK_POSITION,
+        });
+      } catch (error) {
+        console.warn('Watermark application failed, uploading original image:', error);
+      }
+    }
+
     const blockBlobClient = containerClient.getBlockBlobClient(blobId);
-    await blockBlobClient.uploadData(file.buffer, {
+    await blockBlobClient.uploadData(processedBuffer, {
       blobHTTPHeaders: {
         blobContentType: file.mimetype || "application/octet-stream",
       },
