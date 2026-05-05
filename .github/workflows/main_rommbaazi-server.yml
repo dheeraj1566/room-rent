@@ -28,6 +28,7 @@ jobs:
           npm ci
           npm run build --if-present
           npm run test --if-present
+        working-directory: backend
 
       - name: Login to Azure
         uses: azure/login@v2
