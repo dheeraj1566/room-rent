@@ -51,6 +51,15 @@
 .ui-select-icon {
   margin-left: auto;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--slate-500);
+  pointer-events: none;
+}
+
+.ui-select.open .ui-select-icon {
+  color: var(--navy-800);
 }
 
 .ui-select-menu {

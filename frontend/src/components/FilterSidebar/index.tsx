@@ -57,7 +57,6 @@ export default function FilterSidebar({
 }: FilterSidebarProps) {
   const [draft, setDraft] = useState<FilterState>(filters);
 
-  // Sync draft when parent resets filters (e.g. Clear all)
   useEffect(() => {
     setDraft(filters);
   }, [filters]);
@@ -82,11 +81,10 @@ export default function FilterSidebar({
 
       <div className="filter-section">
         <span className="filter-label">Rent</span>
-
         <div className="range-row">
           <div className="range-row-header">
             <span>Min</span>
-            <strong>₹{draft.minRent.toLocaleString("en-IN")}</strong>
+            <strong>&#8377;{draft.minRent.toLocaleString("en-IN")}</strong>
           </div>
           <input
             className="range-input"
@@ -103,11 +101,10 @@ export default function FilterSidebar({
             }
           />
         </div>
-
         <div className="range-row">
           <div className="range-row-header">
             <span>Max</span>
-            <strong>₹{draft.maxRent.toLocaleString("en-IN")}</strong>
+            <strong>&#8377;{draft.maxRent.toLocaleString("en-IN")}</strong>
           </div>
           <input
             className="range-input"
@@ -273,6 +270,14 @@ export default function FilterSidebar({
       <div className="filter-section">
         <span className="filter-label">Room For</span>
         <div className="checkbox-stack">
+          <label className={`checkbox-item checkbox-item-card ${draft.gender.length === 0 ? "active" : ""}`}>
+            <input
+              type="checkbox"
+              checked={draft.gender.length === 0}
+              onChange={() => setDraft((prev) => ({ ...prev, gender: [] }))}
+            />
+            <span>Any</span>
+          </label>
           {roomForOptions.map((item) => {
             const isActive = draft.gender.includes(item);
             return (

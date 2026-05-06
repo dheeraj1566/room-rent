@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Heart, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import "./LikedProperties.css";
 import Navbar from "../../components/Navbar";
 import SiteFooter from "../../components/SiteFooter";
 import { apiFetch } from "../../lib/api";
@@ -16,6 +17,7 @@ export default function LikedPropertiesPage() {
   const navigate = useNavigate();
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [favoritesLoading, setFavoritesLoading] = useState(true);
+  const [unlikingIds, setUnlikingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     apiFetch<{ items: FavoriteItem[] }>("/api/favorites", { method: "GET" })
@@ -23,6 +25,26 @@ export default function LikedPropertiesPage() {
       .catch(() => setFavorites([]))
       .finally(() => setFavoritesLoading(false));
   }, []);
+
+  const handleToggleFavorite = async (listingId: string) => {
+    if (unlikingIds.has(listingId)) return;
+
+    setUnlikingIds((prev) => new Set(prev).add(listingId));
+    try {
+      const data = await apiFetch<{ liked: boolean }>(`/api/favorites/${listingId}`, { method: "POST" });
+      if (!data.liked) {
+        setFavorites((prev) => prev.filter((favorite) => favorite.listingId !== listingId));
+      }
+    } catch {
+      // Keep current UI state when the toggle request fails.
+    } finally {
+      setUnlikingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(listingId);
+        return next;
+      });
+    }
+  };
 
   return (
     <div className="app-shell">
@@ -60,14 +82,27 @@ export default function LikedPropertiesPage() {
                     <Heart size={20} fill="currentColor" className="liked-properties-header-icon" />
                     <h2 className="liked-properties-all-title">All Liked Properties</h2>
                   </div>
-                  <div className="listing-grid">
+                  <div className="liked-properties-grid">
                     {favorites.map((favorite) => (
                       <article
                         key={favorite.listingId}
-                        className="listing-card"
+                        className="listing-card liked-properties-grid-item"
                         onClick={() => navigate(`/listings/${favorite.listingId}`)}
                       >
-                        <div className="listing-card-image">
+                        <button
+                          type="button"
+                          className="listing-card-favorite active liked-properties-unlike-btn"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleToggleFavorite(favorite.listingId);
+                          }}
+                          aria-label="Remove from favorites"
+                          disabled={unlikingIds.has(favorite.listingId)}
+                        >
+                          <Heart size={18} fill="currentColor" />
+                        </button>
+
+                        <div className="listing-card-image liked-properties-image-wrap">
                           {favorite.coverPhotoUrl ? (
                             <img src={favorite.coverPhotoUrl} alt={favorite.title} />
                           ) : (
@@ -77,8 +112,19 @@ export default function LikedPropertiesPage() {
                             </div>
                           )}
                         </div>
-                        <div className="listing-card-content">
+                        <div className="listing-card-content liked-properties-card-content">
                           <h3 className="listing-card-title">{favorite.title}</h3>
+                          <button
+                            type="button"
+                            className="btn btn-outline btn-sm liked-properties-unlike-inline"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleToggleFavorite(favorite.listingId);
+                            }}
+                            disabled={unlikingIds.has(favorite.listingId)}
+                          >
+                            {unlikingIds.has(favorite.listingId) ? "Removing..." : "Unlike"}
+                          </button>
                         </div>
                       </article>
                     ))}

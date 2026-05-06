@@ -503,7 +503,18 @@ export default function Dashboard() {
                     </div>
                   )}
 
-                  <div className="empty-dashed-card">
+                  <div
+                    className="empty-dashed-card dashboard-post-property-tile"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate("/post-property")}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        navigate("/post-property");
+                      }
+                    }}
+                  >
                     <div>
                       <div className="feature-icon dashboard-empty-state-icon">
                         <Plus size={22} />

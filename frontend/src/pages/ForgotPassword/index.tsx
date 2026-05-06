@@ -4,6 +4,7 @@ import { AlertTriangle, Info } from "lucide-react";
 import "./ForgotPassword.css";
 import { apiFetch } from "../../lib/api";
 import brandLogo from "../../assets/Roombaazi Final Logo.png";
+import SiteFooter from "../../components/SiteFooter";
 
 const OTP_RESEND_LIMIT = 3;
 
@@ -56,80 +57,78 @@ export default function ForgotPassword() {
   const remaining = OTP_RESEND_LIMIT - resendCount;
 
   return (
-    <div className="auth-shell">
-      <div className="auth-container">
-        <div className="auth-header">
-          <img
-            src={brandLogo}
-            alt="Roombaazi"
-            className="auth-logo"
-          />
-          <p className="auth-subtitle">Password reset instructions will be sent to your email.</p>
-        </div>
-
-        <div className="glass-card">
-          <h2 className="text-center mb-5">Forgot Password</h2>
-
-          {/* Static info banner — always visible */}
-          <div className="alert-info">
-            <Info size={16} className="alert-icon" />
-            <p className="alert-content">
-              You can request an OTP up to <strong>{OTP_RESEND_LIMIT} times</strong> per 24 hours.
-              {resendCount > 0 && (
-                <span>
-                  {" "}
-                  <strong className={remaining <= 1 ? "text-error" : "text-warning"}>
-                    {remaining} attempt{remaining !== 1 ? "s" : ""} remaining.
-                  </strong>
-                </span>
-              )}
-            </p>
+    <div className="app-shell auth-shell">
+      <main className="auth-main">
+        <div className="page-container">
+          <div className="auth-logo-wrap">
+            <img src={brandLogo} alt="Roombaazi" />
           </div>
 
-          {message && (
-            <div className="alert-success">
-              <p className="alert-content">{message}</p>
-            </div>
-          )}
+          <div className="surface-card auth-card compact">
+            <h1 className="text-center mb-2">Forgot Password</h1>
+            <p className="text-center mb-5">Password reset instructions will be sent to your email.</p>
 
-          {/* Error / limit-hit banner */}
-          {errorMsg && (
-            <div className={`alert-error ${!isLimitHit ? 'severe' : ''}`}>
-              <AlertTriangle size={16} className="alert-icon" />
-              <p className="alert-content">{errorMsg}</p>
+            <div className="alert-info">
+              <Info size={16} className="alert-icon" />
+              <p className="alert-content">
+                You can request an OTP up to <strong>{OTP_RESEND_LIMIT} times</strong> per 24 hours.
+                {resendCount > 0 && (
+                  <span>
+                    {" "}
+                    <strong className={remaining <= 1 ? "text-error" : "text-warning"}>
+                      {remaining} attempt{remaining !== 1 ? "s" : ""} remaining.
+                    </strong>
+                  </span>
+                )}
+              </p>
             </div>
-          )}
 
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label>Email Address</label>
-              <input
-                type="email"
-                className="input-style"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-                disabled={isLimitHit}
-              />
+            {message && (
+              <div className="alert-success">
+                <p className="alert-content">{message}</p>
+              </div>
+            )}
+
+            {errorMsg && (
+              <div className={`alert-error ${!isLimitHit ? "severe" : ""}`}>
+                <AlertTriangle size={16} className="alert-icon" />
+                <p className="alert-content">{errorMsg}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label>Email Address</label>
+                <input
+                  type="email"
+                  className="input-style"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  required
+                  disabled={isLimitHit}
+                />
+              </div>
+              <button className="btn btn-primary w-full" type="submit" disabled={loading || isLimitHit}>
+                {loading ? "Sending..." : resendCount > 0 ? `Resend OTP (${remaining} left)` : "Send Reset Email"}
+              </button>
+            </form>
+
+            <div className="auth-links">
+              <Link to="/reset-password" className="auth-link">
+                Already have OTP? Reset now
+              </Link>
             </div>
-            <button className="btn btn-primary w-full" type="submit" disabled={loading || isLimitHit}>
-              {loading ? "Sending..." : resendCount > 0 ? `Resend OTP (${remaining} left)` : "Send Reset Email"}
-            </button>
-          </form>
-
-          <div className="auth-links">
-            <Link to="/reset-password" className="auth-link">
-              Already have OTP? Reset now
-            </Link>
-          </div>
-          <div className="auth-links">
-            <Link to="/login" className="auth-link muted">
-              Back to Login
-            </Link>
+            <div className="auth-links">
+              <Link to="/login" className="auth-link muted">
+                Back to Login
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
+      </main>
+
+      <SiteFooter />
     </div>
   );
 }

@@ -308,7 +308,11 @@ export const markMonthlyRentPayment = async (
 
     const existingIndex = connection.rentPayments.findIndex((entry) => entry.month === month);
     if (existingIndex >= 0) {
-      const existingEntry = connection.rentPayments[existingIndex];
+      const existingEntry = connection.rentPayments.at(existingIndex);
+      if (!existingEntry) {
+        res.status(500).json({ error: "Rent payment entry could not be loaded" });
+        return;
+      }
 
       const statusChanged = existingEntry.paymentStatus !== paymentStatus;
       const slipUrlChanged = (paymentSlipUrl ?? "") !== (existingEntry.paymentSlipUrl ?? "");
@@ -333,12 +337,12 @@ export const markMonthlyRentPayment = async (
         return;
       }
 
-      connection.rentPayments[existingIndex].paymentStatus = paymentStatus;
-      connection.rentPayments[existingIndex].markedAt = new Date();
-      connection.rentPayments[existingIndex].updateCount = usedUpdates + 1;
+      existingEntry.paymentStatus = paymentStatus;
+      existingEntry.markedAt = new Date();
+      existingEntry.updateCount = usedUpdates + 1;
       if (paymentSlipUrl) {
-        connection.rentPayments[existingIndex].paymentSlipUrl = paymentSlipUrl;
-        connection.rentPayments[existingIndex].paymentSlipBlobId = paymentSlipBlobId;
+        existingEntry.paymentSlipUrl = paymentSlipUrl;
+        existingEntry.paymentSlipBlobId = paymentSlipBlobId;
       }
     } else {
       connection.rentPayments.push({
