@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
+import "./Login.css";
 import brandLogo from "../../assets/Roombaazi Final Logo.png";
 import SiteFooter from "../../components/SiteFooter";
 import { useAuth } from "../../context/AuthContext";
@@ -101,13 +102,13 @@ export default function Login() {
           </div>
 
           <div className="surface-card auth-card compact">
-            <h1 style={{ fontSize: "2.5rem", textAlign: "center", marginBottom: 8 }}>Welcome Back</h1>
-            <p style={{ textAlign: "center", marginBottom: 28 }}>Log in to continue your search</p>
+            <h1 className="login-title-hero">Welcome Back</h1>
+            <p className="login-subtitle-hero">Log in to continue your search</p>
 
             {errorMsg ? <div className="error-banner">{errorMsg}</div> : null}
 
             <form onSubmit={handleSubmit}>
-              <div className="field" style={{ marginBottom: 18 }}>
+              <div className="field login-field-spacing">
                 <label>Email Address</label>
                 <input
                   className="input-style"
@@ -139,14 +140,14 @@ export default function Login() {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                <div style={{ textAlign: "right", marginTop: 10 }}>
-                  <Link to="/forgot-password" className="link-accent" style={{ textDecoration: "none" }}>
+                <div className="login-forgot-link-row">
+                  <Link to="/forgot-password" className="link-accent login-forgot-link">
                     Forgot password?
                   </Link>
                 </div>
               </div>
 
-              <button className="btn btn-dark btn-block" style={{ marginTop: 24 }} disabled={loading || googleLoading}>
+              <button className="btn btn-dark btn-block login-submit-btn" disabled={loading || googleLoading}>
                 {loading ? "Logging in..." : "Log In"}
               </button>
             </form>
@@ -156,7 +157,7 @@ export default function Login() {
             </div>
 
             {isGoogleConfigured ? (
-              <div style={{ display: "flex", justifyContent: "center", minHeight: 46, opacity: googleLoading ? 0.7 : 1 }}>
+              <div className="login-google-wrapper">
                 <div ref={googleButtonRef} />
               </div>
             ) : (
@@ -165,7 +166,7 @@ export default function Login() {
               </button>
             )}
 
-            <div className="auth-link-row" style={{ marginTop: 28 }}>
+            <div className="auth-link-row login-register-row">
               Don't have an account? <Link to="/signup">Sign up</Link>
             </div>
           </div>

@@ -14,6 +14,7 @@ import SiteFooter from "../../components/SiteFooter";
 import ListingCard from "../../components/ListingCard";
 import Skeleton from "../../components/Skeleton";
 import { apiFetch } from "../../lib/api";
+import "./Home.css";
 
 type Listing = {
   listingId: string;
@@ -79,13 +80,13 @@ export default function Home() {
         <section className="hero-panel dot-grid hero-gradient">
           <div className="page-container home-hero">
             <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
-                <img src={brandLogo} alt="Roombaazi" style={{ height: 48, width: "auto" }} />
-                <div style={{ display: "flex", gap: 10 }}>
-                  <Link to="/login" className="btn btn-outline" style={{ padding: "8px 20px", fontSize: 14 }}>
+              <div className="home-header-nav">
+                <img src={brandLogo} alt="Roombaazi" />
+                <div className="home-header-actions">
+                  <Link to="/login" className="btn btn-outline">
                     Login
                   </Link>
-                  <Link to="/register" className="btn btn-dark" style={{ padding: "8px 20px", fontSize: 14 }}>
+                  <Link to="/register" className="btn btn-dark">
                     Register
                   </Link>
                 </div>
@@ -94,12 +95,12 @@ export default function Home() {
                 <Star size={14} fill="currentColor" />
                 Trusted by 50,000+ renters
               </span>
-              <h1 className="section-title" style={{ marginTop: 20 }}>
+              <h1 className="section-title home-title">
                 Find your next home,
                 <br />
                 <span className="accent">without the broker</span>
               </h1>
-              <p className="section-subtitle" style={{ maxWidth: 760, margin: "18px auto 0" }}>
+              <p className="section-subtitle home-subtitle">
                 Verified PGs, rooms and flats across India. Talk directly to owners with
                 zero brokerage and total transparency.
               </p>
@@ -123,7 +124,7 @@ export default function Home() {
               </div>
 
               <div className="popular-row">
-                <span style={{ fontWeight: 700, color: "var(--slate-700)" }}>Popular:</span>
+                <span className="home-popular-label">Popular:</span>
                 {popularAreas.map((area) => (
                   <button
                     key={area}
@@ -138,7 +139,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="page-section" style={{ paddingTop: "4rem" }}>
+        <section className="page-section home-section-padded">
           <div className="page-container">
             <div className="feature-grid">
               <article className="feature-card">
@@ -173,8 +174,8 @@ export default function Home() {
                 <h2>Featured rentals</h2>
                 <p>Hand-picked verified homes near you</p>
               </div>
-              <Link to="/browse" className="link-accent" style={{ textDecoration: "none" }}>
-                View all <ArrowRight size={16} style={{ verticalAlign: "middle" }} />
+              <Link to="/browse" className="link-accent home-view-all-link">
+                View all <ArrowRight size={16} className="home-view-all-icon" />
               </Link>
             </div>
 
@@ -182,11 +183,11 @@ export default function Home() {
               {loading
                 ? Array.from({ length: 3 }).map((_, index) => (
                     <div key={`home-skeleton-${index}`} className="listing-card">
-                      <Skeleton style={{ aspectRatio: "1.24 / 1" }} />
-                      <div style={{ padding: 18 }}>
-                        <Skeleton style={{ height: 22, width: "48%", marginBottom: 10 }} />
-                        <Skeleton style={{ height: 18, width: "75%", marginBottom: 8 }} />
-                        <Skeleton style={{ height: 18, width: "55%" }} />
+                      <Skeleton className="home-featured-skeleton" />
+                      <div className="home-skeleton-content">
+                        <Skeleton className="home-skeleton-title" />
+                        <Skeleton className="home-skeleton-subtitle" />
+                        <Skeleton className="home-skeleton-meta" />
                       </div>
                     </div>
                   ))
@@ -213,22 +214,22 @@ export default function Home() {
 
             <div className="cta-banner">
               <div>
-                <span className="badge badge-dark" style={{ marginBottom: 14 }}>
+                <span className="badge badge-dark home-cta-badge">
                   <MapPin size={14} />
                   For Owners
                 </span>
-                <h2 style={{ fontSize: "2rem", marginBottom: 8 }}>
+                <h2 className="home-cta-title">
                   List your property in 3 minutes
                 </h2>
                 <p>Reach thousands of verified tenants. No commission, no hassle.</p>
               </div>
 
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <div className="home-cta-actions">
                 <Link to="/post-property" className="btn btn-primary">
                   Post Property Free
                   <ArrowRight size={18} />
                 </Link>
-                <Link to="/browse" className="btn btn-outline" style={{ color: "white", borderColor: "rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)" }}>
+                <Link to="/browse" className="btn btn-outline home-cta-secondary">
                   See how it works
                 </Link>
               </div>

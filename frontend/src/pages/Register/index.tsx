@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, Eye, EyeOff, Mail } from "lucide-react";
+import "./Register.css";
 import brandLogo from "../../assets/Roombaazi Final Logo.png";
 import SiteFooter from "../../components/SiteFooter";
 import { apiFetch } from "../../lib/api";
@@ -94,14 +95,14 @@ export default function Register() {
             <div className="auth-logo-wrap">
               <img src={brandLogo} alt="Roombaazi" />
             </div>
-            <div className="surface-card auth-card" style={{ textAlign: "center", padding: "48px 40px" }}>
-              <Mail size={52} style={{ color: "var(--orange-500)", marginBottom: 20 }} />
-              <h2 style={{ marginBottom: 10 }}>Check your inbox</h2>
-              <p style={{ color: "var(--text-secondary)", marginBottom: 8 }}>
-                We sent a confirmation link to
+            <div className="surface-card auth-card register-success-card">
+              <Mail size={52} className="register-success-icon" />
+              <h2 className="register-success-title">Check your inbox</h2>
+              <p className="register-success-subtitle">
+                We've sent a verification link to
               </p>
-              <p style={{ fontWeight: 700, fontSize: "1.05rem", marginBottom: 24 }}>{email}</p>
-              <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: 28 }}>
+              <p className="register-success-email">{email}</p>
+              <p className="register-success-instruction">
                 Tap the link in the email to confirm your address and activate your Roombaazi account.
                 The link expires in 24 hours.
               </p>
@@ -123,11 +124,11 @@ export default function Register() {
           </div>
 
           <div className="surface-card auth-card">
-            <h1 style={{ fontSize: "clamp(1.85rem, 4.2vw, 2.35rem)", textAlign: "center", marginBottom: 8 }}>Create Account</h1>
-            <p style={{ textAlign: "center", marginBottom: 28 }}>Join thousands of renters &amp; owners</p>
+            <h1 className="register-title-hero">Create Account</h1>
+            <p className="register-subtitle-hero">Join thousands of renters &amp; owners</p>
 
             <form onSubmit={handleSubmit}>
-              <div className="field" style={{ marginBottom: 18 }}>
+              <div className="field register-field-spacing">
                 <label>Full Name</label>
                 <input
                   className={`input-style ${fieldErrors.fullName ? "input-error" : ""}`}
@@ -141,7 +142,7 @@ export default function Register() {
                 />
               </div>
 
-              <div className="field" style={{ marginBottom: 18 }}>
+              <div className="field register-field-spacing">
                 <label>Gender</label>
                 <div className="radio-inline">
                   {(["Male", "Female", "Other"] as const).map((option) => (
@@ -158,7 +159,7 @@ export default function Register() {
                 </div>
               </div>
 
-              <div className="field" style={{ marginBottom: 18 }}>
+              <div className="field register-field-spacing">
                 <label>Phone Number</label>
                 <input
                   className={`input-style ${fieldErrors.phone ? "input-error" : ""}`}
@@ -172,7 +173,7 @@ export default function Register() {
                 />
               </div>
 
-              <div className="field" style={{ marginBottom: 18 }}>
+              <div className="field register-field-spacing">
                 <label>Email Address</label>
                 <input
                   className={`input-style ${fieldErrors.email ? "input-error" : ""}`}
@@ -187,7 +188,7 @@ export default function Register() {
                 />
               </div>
 
-              <div className="field" style={{ marginBottom: 18 }}>
+              <div className="field register-field-spacing">
                 <label>Password</label>
                 <div className="password-input-wrapper">
                   <input
@@ -249,12 +250,12 @@ export default function Register() {
 
               {bottomError ? <div className="form-error-summary">{bottomError}</div> : null}
 
-              <button className="btn btn-dark btn-block" style={{ marginTop: 24 }} disabled={loading}>
+              <button className="btn btn-dark btn-block register-submit-btn" disabled={loading}>
                 {loading ? "Creating account..." : "Create Account"}
               </button>
             </form>
 
-            <div className="auth-link-row" style={{ marginTop: 28 }}>
+            <div className="auth-link-row register-login-row">
               Already have an account? <Link to="/login">Log in</Link>
             </div>
           </div>

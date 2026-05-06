@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import "./Skeleton.css";
 
 type SkeletonProps = {
   className?: string;

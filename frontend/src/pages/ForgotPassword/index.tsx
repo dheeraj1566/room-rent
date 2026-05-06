@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AlertTriangle, Info } from "lucide-react";
+import "./ForgotPassword.css";
 import { apiFetch } from "../../lib/api";
 import brandLogo from "../../assets/Roombaazi Final Logo.png";
 
@@ -77,7 +78,7 @@ export default function ForgotPassword() {
               {resendCount > 0 && (
                 <span>
                   {" "}
-                  <strong style={{ color: remaining <= 1 ? "#dc2626" : "#92400e" }}>
+                  <strong className={remaining <= 1 ? "text-error" : "text-warning"}>
                     {remaining} attempt{remaining !== 1 ? "s" : ""} remaining.
                   </strong>
                 </span>

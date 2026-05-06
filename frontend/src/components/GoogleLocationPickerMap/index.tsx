@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GoogleMap, MarkerF, useJsApiLoader } from "@react-google-maps/api";
 import { useLocation } from "react-router-dom";
+import "./GoogleLocationPickerMap.css";
 import { GOOGLE_MAPS_API_KEY, type Coordinates } from "../../lib/googleMaps";
 
 type GoogleLocationPickerMapProps = {
@@ -99,7 +100,7 @@ export default function GoogleLocationPickerMap({
 
   if (!GOOGLE_MAPS_API_KEY) {
     return (
-      <div className={className} style={{ display: "grid", placeItems: "center", textAlign: "center", padding: "1rem" }}>
+      <div className={`${className ?? ""} google-location-picker-loading`}>
         Set <code>VITE_GOOGLE_MAPS_API_KEY</code> in <code>frontend/.env</code> to enable map.
       </div>
     );
@@ -107,7 +108,7 @@ export default function GoogleLocationPickerMap({
 
   if (loadError) {
     return (
-      <div className={className} style={{ display: "grid", placeItems: "center", textAlign: "center", padding: "1rem" }}>
+      <div className={`${className ?? ""} google-location-picker-error`}>
         Failed to load Google Maps script. Check API key and network.
       </div>
     );
@@ -115,11 +116,11 @@ export default function GoogleLocationPickerMap({
 
   if (authError) {
     return (
-      <div className={className} style={{ overflow: "hidden", borderRadius: "10px" }}>
+      <div className={`${className ?? ""} google-location-picker-container`}>
         <iframe
           title="Map preview"
           src={embedSrc}
-          style={{ width: "100%", height: "100%", border: 0 }}
+          className="google-location-picker-iframe"
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
         />
@@ -129,19 +130,19 @@ export default function GoogleLocationPickerMap({
 
   if (!isLoaded) {
     return (
-      <div className={className} style={{ display: "grid", placeItems: "center", textAlign: "center", padding: "1rem" }}>
+      <div className={`${className ?? ""} google-location-picker-loading`}>
         Loading map...
       </div>
     );
   }
 
   return (
-    <div className={className} style={{ position: "relative", overflow: "hidden", borderRadius: "10px" }}>
+    <div className={`${className ?? ""} google-location-picker-wrapper`}>
       <GoogleMap
         key={mapInstanceKey}
         center={center}
         zoom={zoom}
-        mapContainerStyle={{ width: "100%", height: "100%" }}
+        mapContainerClassName="google-location-picker-map-container"
         onLoad={(map) => {
           mapRef.current = map;
           // In SPA route transitions, map can mount before final layout.
@@ -179,15 +180,8 @@ export default function GoogleLocationPickerMap({
         />
       </GoogleMap>
       {!mapReady && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "rgba(255, 255, 255, 0.8)",
-            padding: "0.75rem",
-          }}
-        >
-          <div className="skeleton" style={{ width: "100%", height: "100%" }} />
+        <div className="google-location-picker-overlay">
+          <div className="skeleton google-location-picker-map-loading" />
         </div>
       )}
     </div>

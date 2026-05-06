@@ -1,0 +1,245 @@
+/* Navbar Component Styles */
+
+.app-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.app-navbar-inner {
+  width: min(1280px, calc(100vw - 30px));
+  margin: 0 auto;
+  min-height: 86px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 10px 0;
+  transition: min-height 0.22s ease, gap 0.22s ease, padding 0.22s ease;
+}
+
+.brand-logo {
+  height: 42px;
+  width: auto;
+  transform-origin: center left;
+  transition: transform 0.22s ease;
+}
+
+.nav-center {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 14px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--slate-700);
+  transition: background 0.18s ease, color 0.18s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nav-link:hover {
+  background: rgba(34, 53, 84, 0.05);
+  color: var(--navy-900);
+}
+
+.nav-link.active {
+  background: rgba(34, 53, 84, 0.08);
+  color: var(--navy-900);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.icon-pill {
+  width: 46px;
+  min-width: 46px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--slate-700);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.icon-pill:hover {
+  background: var(--white);
+  box-shadow: var(--shadow-soft);
+}
+
+.icon-pill.active {
+  background: rgba(34, 53, 84, 0.08);
+  color: var(--red-500);
+  border-color: rgba(34, 53, 84, 0.12);
+}
+
+.notification-trigger {
+  position: relative;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 20px;
+  text-align: center;
+  border: 2px solid var(--surface);
+}
+
+.mobile-menu-btn {
+  display: none;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--slate-700);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  z-index: 101;
+}
+
+.mobile-menu-btn:hover {
+  background: rgba(34, 53, 84, 0.06);
+  transform: scale(1.05);
+}
+
+.mobile-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding-top: 69px;
+  opacity: 0;
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.mobile-menu-overlay.closing {
+  animation: fadeOut 0.3s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.mobile-menu {
+  background: var(--surface);
+  width: 320px;
+  max-width: 85vw;
+  height: calc(100vh - 86px);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.15);
+  overflow-y: auto;
+  border-radius: 20px 0 0 0;
+  animation: slideInRight 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.mobile-menu.closing {
+  animation: slideOutRight 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slideOutRight {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+
+.app-navbar.is-compact {
+  box-shadow: 0 10px 22px rgba(16, 24, 40, 0.1);
+}
+
+.app-navbar.is-compact .app-navbar-inner {
+  min-height: 68px;
+  gap: 14px;
+  padding: 6px 0;
+}
+
+.app-navbar.is-compact .nav-link {
+  min-height: 38px;
+  padding: 0 14px;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .nav-center {
+    gap: 4px;
+  }
+
+  .nav-link {
+    padding: 0 12px;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+  }
+
+  .nav-center {
+    display: none;
+  }
+
+  .app-navbar-inner {
+    gap: 8px;
+  }
+
+  .nav-actions {
+    gap: 6px;
+  }
+
+  .icon-pill {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+  }
+}

@@ -1,0 +1,784 @@
+/* ListingDetails Page Styles */
+
+.listing-details-container {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 24px;
+  align-items: start;
+}
+
+.listing-details-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.listing-details-main-image {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1.6 / 1;
+  border-radius: 22px;
+  overflow: hidden;
+  background: var(--slate-100);
+}
+
+.listing-details-main-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.listing-details-thumbnails {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+}
+
+.listing-details-thumbnail {
+  width: 92px;
+  height: 72px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  background: var(--slate-100);
+}
+
+.listing-details-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.listing-details-thumbnail.active {
+  border-color: var(--orange-500);
+}
+
+.listing-details-sidebar-skeleton {
+  height: 360px;
+  border-radius: 24px;
+}
+
+.listing-details-content {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.listing-details-info-card {
+  padding: 28px;
+}
+
+.listing-details-info-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.listing-details-info-title {
+  font-size: 2.15rem;
+  line-height: 1.1;
+  margin-bottom: 10px;
+}
+
+.listing-details-info-location {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.listing-details-badge {
+  margin-bottom: 14px;
+}
+
+.listing-details-price {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--navy-950);
+  margin-bottom: 8px;
+}
+
+.listing-details-price-details {
+  font-size: 0.95rem;
+  color: var(--slate-600);
+}
+
+.listing-details-occupants {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--slate-700);
+  margin-bottom: 12px;
+}
+
+.listing-details-amenities {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.listing-details-amenity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--slate-600);
+}
+
+.listing-details-about-title {
+  font-size: 1.3rem;
+  margin-bottom: 12px;
+}
+
+.listing-details-about-text {
+  line-height: 1.7;
+  color: var(--slate-600);
+}
+
+.listing-details-specs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.listing-details-skeleton-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.listing-details-skeleton-main {
+  width: 100%;
+  aspect-ratio: 1.6 / 1;
+  border-radius: 22px;
+}
+
+.listing-details-skeleton-thumbnails {
+  display: flex;
+  gap: 12px;
+}
+
+.listing-details-skeleton-thumbnail {
+  width: 92px;
+  height: 72px;
+  border-radius: 16px;
+}
+
+.listing-details-skeleton-info {
+  height: 140px;
+  border-radius: 24px;
+}
+
+.listing-details-skeleton-landlord {
+  height: 200px;
+  border-radius: 24px;
+}
+
+.listing-details-skeleton-sidebar {
+  height: 360px;
+  border-radius: 24px;
+}
+
+.listing-details-image-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.listing-details-image-card {
+  padding: 18px;
+}
+
+.listing-details-image-main {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.listing-details-image-placeholder {
+  height: 100%;
+}
+
+.listing-details-image-placeholder-text {
+  font-weight: 700;
+}
+
+.listing-details-image-viewer {
+  position: relative;
+  border-radius: 26px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: var(--slate-100);
+  aspect-ratio: 1.68 / 1;
+}
+
+.listing-details-page-title {
+  font-size: 2.15rem;
+  line-height: 1.1;
+  margin-bottom: 10px;
+}
+
+.listing-details-page-location {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.listing-details-meta-wrapper {
+  margin-bottom: 16px;
+}
+
+.listing-details-about-section {
+  padding-top: 18px;
+  border-top: 1px solid var(--slate-200);
+}
+
+.listing-details-section-title {
+  font-size: 1.35rem;
+  margin-bottom: 16px;
+}
+
+.listing-details-property-card {
+  padding: 28px;
+}
+
+.listing-details-property-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.listing-details-property-item {
+  border: 1px solid var(--slate-200);
+  background: var(--slate-100);
+  border-radius: 18px;
+  padding: 14px 16px;
+}
+
+.listing-details-property-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--slate-700);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.listing-details-property-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--navy-900);
+}
+
+.listing-details-location-card {
+  padding: 28px;
+}
+
+.listing-details-map-container {
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid var(--slate-200);
+}
+
+.listing-details-map-iframe {
+  width: 100%;
+  height: clamp(240px, 52vw, 420px);
+  border: 0;
+}
+
+.listing-details-reviews-card {
+  padding: 28px;
+  margin-top: 16px;
+}
+
+.listing-details-spec-item {
+  background: var(--slate-50);
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.listing-details-spec-label {
+  font-size: 0.85rem;
+  color: var(--slate-600);
+  margin-bottom: 4px;
+}
+
+.listing-details-spec-value {
+  font-weight: 700;
+  color: var(--navy-900);
+}
+
+.listing-details-landlord-card {
+  padding: 28px;
+}
+
+.listing-details-landlord-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.listing-details-landlord-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  background: var(--slate-100);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.listing-details-landlord-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.listing-details-landlord-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.listing-details-landlord-details {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.9rem;
+  color: var(--slate-600);
+}
+
+.listing-details-sidebar-loading {
+  flex: 1;
+}
+
+.listing-details-review-stars {
+  display: flex;
+  gap: 4px;
+}
+
+.listing-details-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.88);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
+.listing-details-nav-btn-prev {
+  left: 12px;
+}
+
+.listing-details-nav-btn-next {
+  right: 12px;
+}
+
+.listing-details-thumbnails-overlay {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.listing-details-thumb-btn {
+  width: 58px;
+  height: 42px;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  flex: 0 0 auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.listing-details-thumb-btn.is-active {
+  border-color: var(--orange-500);
+  transform: translateY(-1px);
+}
+
+.listing-details-thumb-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.listing-details-reviews-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.listing-details-reviews-title {
+  font-size: 1.35rem;
+  margin-bottom: 4px;
+}
+
+.listing-details-review-skeleton {
+  height: 140px;
+  border-radius: 18px;
+}
+
+.listing-details-review-empty {
+  border-radius: 22px;
+  background: var(--slate-100);
+  padding: 24px;
+  text-align: center;
+}
+
+.listing-details-review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.listing-details-review-item {
+  border: 1px solid var(--slate-200);
+  background: #fff;
+  border-radius: 20px;
+  padding: 18px;
+}
+
+.listing-details-review-item-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.listing-details-review-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(180deg, #fff2e2 0%, #f6f7fb 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: var(--navy-800);
+}
+
+.listing-details-review-avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.listing-details-review-name {
+  font-weight: 700;
+  color: var(--navy-900);
+}
+
+.listing-details-review-meta {
+  font-size: 0.84rem;
+  color: var(--slate-600);
+}
+
+.listing-details-review-stars-right {
+  margin-left: auto;
+}
+
+.listing-details-review-note {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--slate-200);
+}
+
+.listing-details-review-form-title {
+  font-size: 1.05rem;
+  margin-bottom: 10px;
+}
+
+.listing-details-review-stars-form {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.listing-details-review-star-btn {
+  background: transparent;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.listing-details-review-submit {
+  margin-top: 14px;
+}
+
+.listing-details-sidebar-sticky {
+  position: sticky;
+  top: 104px;
+}
+
+.listing-details-sidebar-card {
+  padding: 24px;
+}
+
+.listing-details-sidebar-price-block {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--slate-200);
+  margin-bottom: 18px;
+}
+
+.listing-details-sidebar-price {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--navy-950);
+  line-height: 1;
+}
+
+.listing-details-sidebar-price-unit {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--slate-600);
+}
+
+.listing-details-sidebar-occupants {
+  margin-top: 8px;
+}
+
+.listing-details-rent-tiers {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.listing-details-rent-tier-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+}
+
+.listing-details-security-deposit {
+  margin-top: 12px;
+}
+
+.listing-details-owner-box {
+  border-radius: 20px;
+  background: var(--slate-100);
+  border: 1px solid var(--slate-200);
+  padding: 16px;
+  margin-bottom: 18px;
+}
+
+.listing-details-owner-label {
+  font-size: 0.84rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--slate-700);
+  margin-bottom: 8px;
+}
+
+.listing-details-owner-name {
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: var(--navy-900);
+}
+
+.listing-details-connect-block {
+  margin-bottom: 14px;
+}
+
+.listing-details-connect-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.listing-details-status {
+  padding: 12px 14px;
+  border-radius: 16px;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.listing-details-status-pending {
+  background: #fff7e8;
+  border: 1px solid rgba(255, 154, 61, 0.45);
+  color: #b96817;
+}
+
+.listing-details-status-rejected {
+  background: rgba(255, 95, 87, 0.08);
+  border: 1px solid rgba(255, 95, 87, 0.25);
+  color: #b3403a;
+}
+
+.listing-details-status-connected {
+  background: var(--green-100);
+  border: 1px solid rgba(24, 169, 87, 0.25);
+  color: var(--green-500);
+}
+
+.listing-details-edit-btn {
+  margin-top: 12px;
+}
+
+.listing-details-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 40, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 100;
+}
+
+.listing-details-modal-card {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: 26px;
+}
+
+.listing-details-modal-title {
+  font-size: 1.45rem;
+  margin-bottom: 16px;
+}
+
+.listing-details-field-fullwidth {
+  grid-column: 1 / -1;
+}
+
+.listing-details-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.listing-details-room-upload-box {
+  border: 1px solid var(--slate-200);
+  border-radius: 16px;
+  padding: 10px;
+}
+
+.listing-details-upload-input-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.listing-details-upload-trigger {
+  width: 100%;
+  min-height: 64px;
+  border: 1px dashed #cbd7e4;
+  border-radius: 14px;
+  background: #f8fbff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.listing-details-upload-trigger:hover {
+  border-color: rgba(255, 154, 61, 0.58);
+  background: #fff5e9;
+  transform: translateY(-1px);
+}
+
+.listing-details-upload-trigger-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--navy-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.listing-details-upload-trigger-hint {
+  font-size: 0.78rem;
+  color: var(--slate-600);
+}
+
+.listing-details-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .listing-details-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .listing-details-info-card,
+  .listing-details-landlord-card {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .listing-details-info-title {
+    font-size: 1.5rem;
+  }
+
+  .listing-details-price {
+    font-size: 1.4rem;
+  }
+
+  .listing-details-info-header {
+    flex-direction: column;
+  }
+
+  .listing-details-amenities {
+    grid-template-columns: 1fr;
+  }
+
+  .listing-details-landlord-info {
+    flex-direction: column;
+  }
+
+  .listing-details-thumbnails {
+    gap: 8px;
+  }
+
+  .listing-details-thumbnail {
+    width: 70px;
+    height: 55px;
+  }
+}

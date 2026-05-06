@@ -7,6 +7,7 @@ import Select from "../../components/Select";
 import { ApiError, apiFetch } from "../../lib/api";
 import { forwardGeocode } from "../../lib/googleMaps";
 import { useToast } from "../../context/ToastContext";
+import "./AddListing.css";
 
 type LocationOption = {
   area: string;
@@ -408,9 +409,9 @@ export default function AddListing() {
 
       <main className="page-shell">
         <section className="hero-panel hero-gradient">
-          <div className="page-container" style={{ padding: "46px 0 56px" }}>
-            <div style={{ textAlign: "center" }}>
-              <h1 style={{ fontSize: "clamp(2.1rem, 5vw, 3.4rem)", lineHeight: 1.06, marginBottom: 10 }}>Post Your Property</h1>
+          <div className="page-container add-listing-container">
+            <div className="add-listing-hero-content">
+              <h1 className="add-listing-hero-title">Post Your Property</h1>
               <p className="section-subtitle">
                 {step === 1 && "Tell us where your property is located"}
                 {step === 2 && "Tell us about your property details"}
@@ -428,13 +429,13 @@ export default function AddListing() {
             </div>
 
             {step === 1 ? (
-              <div className="form-panel" style={{ width: "min(920px, 100%)", margin: "0 auto" }}>
-                <div style={{ display: "flex", alignItems: "start", gap: 14, marginBottom: 26 }}>
-                  <div className="feature-icon" style={{ marginBottom: 0 }}>
+              <div className="form-panel add-listing-form-container">
+                <div className="add-listing-section-header">
+                  <div className="feature-icon add-listing-section-icon">
                     <MapPin size={20} />
                   </div>
                   <div>
-                    <h2 style={{ fontSize: "clamp(1.45rem, 3.2vw, 2rem)", marginBottom: 4 }}>Where is your property located?</h2>
+                    <h2 className="add-listing-section-title">Where is your property located?</h2>
                     <p>We'll precisely pinpoint your location to help tenants find you easily.</p>
                   </div>
                 </div>
@@ -476,7 +477,7 @@ export default function AddListing() {
                       className={step1Submitted && !colony ? "input-error" : ""}
                     />
                   </div>
-                  <div className="field" style={{ gridColumn: "1 / -1" }}>
+                  <div className="field add-listing-field-fullwidth">
                     <label>Pincode *</label>
                     <input
                       className={`input-style${step1Submitted && !/^\d{6}$/.test(pincode) ? " input-error" : ""}`}
@@ -487,9 +488,9 @@ export default function AddListing() {
                   </div>
                 </div>
 
-                {errorMsg ? <div className="error-banner" style={{ marginTop: 20 }}>{errorMsg}</div> : null}
+                {errorMsg ? <div className="error-banner add-listing-error">{errorMsg}</div> : null}
 
-                <div className="form-actions" style={{ justifyContent: "flex-end" }}>
+                <div className="form-actions add-listing-form-actions">
                   <button className="btn btn-dark" onClick={() => void handleStepOne()} disabled={step1Loading}>
                     {step1Loading ? "Locating address..." : "Continue to Room Details"}
                     <ArrowRight size={18} />
@@ -499,9 +500,9 @@ export default function AddListing() {
             ) : null}
 
             {step === 2 ? (
-              <div style={{ width: "min(980px, 100%)", margin: "0 auto" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
-                  <h2 style={{ fontSize: "clamp(1.45rem, 3.2vw, 2rem)" }}>Room Details</h2>
+              <div className="add-listing-step-two-container">
+                <div className="add-listing-details-header">
+                  <h2 className="add-listing-details-title">Room Details</h2>
                   <button className="btn btn-outline" onClick={() => setRooms((prev) => [...prev, createRoom()])}>
                     <Plus size={18} />
                     Add Another Room
@@ -509,8 +510,8 @@ export default function AddListing() {
                 </div>
 
                 {/* Common fields shared across all rooms */}
-                <div className="form-panel" style={{ marginBottom: 22 }}>
-                  <h3 style={{ fontSize: "1.1rem", marginBottom: 16 }}>Property Details (applies to all rooms)</h3>
+                <div className="form-panel add-listing-property-panel">
+                  <h3 className="add-listing-property-title">Property Details (applies to all rooms)</h3>
                   <div className="field-grid-2">
                     <div className="field">
                       <label>Property Type *</label>
@@ -538,37 +539,16 @@ export default function AddListing() {
                 </div>
 
                 {rooms.map((room, roomIndex) => (
-                  <div key={room.id} className="form-panel" style={{ marginBottom: 22, padding: 0, overflow: "hidden" }}>
+                  <div key={room.id} className="form-panel add-listing-room-panel">
                     {/* Room card header strip */}
-                    <div style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "14px 24px",
-                      background: "linear-gradient(90deg, var(--navy-900, #0f172a), var(--navy-800, #1e3a5f))",
-                      borderRadius: "inherit",
-                      borderBottomLeftRadius: 0,
-                      borderBottomRightRadius: 0,
-                    }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <span style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: 32,
-                          height: 32,
-                          borderRadius: "50%",
-                          background: "var(--orange-500, #f59e0b)",
-                          color: "#0f172a",
-                          fontWeight: 900,
-                          fontSize: "0.95rem",
-                        }}>{roomIndex + 1}</span>
-                        <h3 style={{ fontSize: "1.15rem", color: "#fff", margin: 0 }}>Room {roomIndex + 1}</h3>
+                    <div className="add-listing-room-header">
+                      <div className="add-listing-room-header-content">
+                        <span className="add-listing-room-badge">{roomIndex + 1}</span>
+                        <h3 className="add-listing-room-title">Room {roomIndex + 1}</h3>
                       </div>
                       {rooms.length > 1 ? (
                         <button
-                          className="btn btn-outline btn-sm"
-                          style={{ borderColor: "rgba(255,255,255,0.25)", color: "#fff" }}
+                          className="btn btn-outline btn-sm add-listing-room-remove-btn"
                           onClick={() => setRooms((prev) => prev.filter((item) => item.id !== room.id))}
                         >
                           <Trash2 size={15} />
@@ -576,7 +556,7 @@ export default function AddListing() {
                         </button>
                       ) : null}
                     </div>
-                    <div style={{ padding: 24 }}>
+                    <div className="add-listing-room-content">
 
                     <div className="field-grid-2">
                       {(() => {
@@ -612,7 +592,7 @@ export default function AddListing() {
 
                       {/* Monthly Rent Field - Always Visible */}
                       <div className="field">
-                        <label>Monthly Rent (₹) * {room.maxOccupants && Number(room.maxOccupants) > 0 ? <span style={{ color: "var(--text-secondary)" }}>for {room.maxOccupants} occupants</span> : null}</label>
+                        <label>Monthly Rent (₹) * {room.maxOccupants && Number(room.maxOccupants) > 0 ? <span className="add-listing-occupant-hint">for {room.maxOccupants} occupants</span> : null}</label>
                         <input
                           className={`input-style${step2Submitted && !(room.rentTiers.find(t => t.occupants === Number(room.maxOccupants))?.rent) ? " input-error" : ""}`}
                           value={room.maxOccupants && Number(room.maxOccupants) > 0 ? (room.rentTiers.find(tier => tier.occupants === Number(room.maxOccupants))?.rent || "") : room.monthlyRent}
@@ -630,8 +610,8 @@ export default function AddListing() {
 
                       {/* Dynamic Rent Tiers for Lower Occupancy */}
                       {room.maxOccupants && Number(room.maxOccupants) > 1 ? (
-                        <div style={{ gridColumn: "1 / -1" }}>
-                          <div className="field-grid-2">
+                        <div className="add-listing-field-fullwidth">
+                          <div className="field-grid-2 add-listing-field-grid">
                             {Array.from({ length: Number(room.maxOccupants) - 1 }, (_, index) => {
                               const occupants = Number(room.maxOccupants) - 1 - index;
                               const tierRent = room.rentTiers.find(tier => tier.occupants === occupants)?.rent || "";
@@ -748,10 +728,10 @@ export default function AddListing() {
                       </div>
 
                       {needsAdvanced ? (
-                        <div className="field" style={{ gridColumn: "1 / -1" }}>
+                        <div className="field add-listing-field-fullwidth">
                           <label>Security Deposit (₹) *</label>
-                          <div className="field-grid-2" style={{ gap: 12 }}>
-                            <div className="field" style={{ gap: 8 }}>
+                          <div className="field-grid-2 add-listing-field-grid">
+                            <div className="field add-listing-field-gap">
                               <Select
                                 value={room.securityDepositType}
                                 onChange={(next) =>
@@ -771,7 +751,7 @@ export default function AddListing() {
                             </div>
 
                             {room.securityDepositType === "custom" ? (
-                              <div className="field" style={{ gap: 8 }}>
+                              <div className="field add-listing-field-gap">
                                 <input
                                   className={`input-style${step2Submitted && room.securityDepositAmount === "" ? " input-error" : ""}`}
                                   value={room.securityDepositAmount}
@@ -785,7 +765,7 @@ export default function AddListing() {
                                 <span className="field-note">Enter a fixed deposit amount in ₹.</span>
                               </div>
                             ) : (
-                              <div className="field" style={{ gap: 8 }}>
+                              <div className="field add-listing-field-gap">
                                 <input
                                   className="input-style"
                                   value={depositPreview ? `₹${depositPreview.toLocaleString("en-IN")}` : ""}
@@ -812,7 +792,7 @@ export default function AddListing() {
 
                       <div className="field">
                         <label>Room For</label>
-                        <div className="radio-inline" style={{ minHeight: 56 }}>
+                        <div className="radio-inline add-listing-radio-inline">
                           {(["Male", "Female", "Any"] as const).map((option) => (
                             <label key={option} className="checkbox-item">
                               <input
@@ -829,7 +809,7 @@ export default function AddListing() {
 
                       <div className="field">
                         <label>Smoking Allowed</label>
-                        <div className="radio-inline" style={{ minHeight: 56 }}>
+                        <div className="radio-inline add-listing-radio-inline">
                           <label className="checkbox-item">
                             <input
                               type="radio"
@@ -851,7 +831,7 @@ export default function AddListing() {
                         </div>
                       </div>
 
-                      <div className="field" style={{ gridColumn: "1 / -1" }}>
+                      <div className="field add-listing-field-fullwidth">
                         <label>Description</label>
                         <textarea
                           className="textarea-style"
@@ -861,7 +841,7 @@ export default function AddListing() {
                         />
                       </div>
 
-                      <div className="field" style={{ gridColumn: "1 / -1" }}>
+                      <div className="field add-listing-field-fullwidth">
                         <label>Room Images (up to 3, at least 1 required) *</label>
                         <div className={`upload-grid${step2Submitted && !room.roomImages.some(Boolean) ? " upload-grid-error" : ""}` }>
                           {room.roomImagePreviews.map((preview, imageIndex) => (
@@ -869,8 +849,8 @@ export default function AddListing() {
                               {preview ? <img src={preview} alt={`Room ${roomIndex + 1} ${imageIndex + 1}`} /> : null}
                               {!preview ? (
                                 <>
-                                  <ImageUp size={24} style={{ position: "relative", zIndex: 1 }} />
-                                  <span style={{ position: "relative", zIndex: 1 }}>Image {imageIndex + 1}</span>
+                                  <ImageUp size={24} className="add-listing-upload-icon" />
+                                  <span className="add-listing-upload-text">Image {imageIndex + 1}</span>
                                 </>
                               ) : (
                                 <button
@@ -887,7 +867,7 @@ export default function AddListing() {
                               <input
                                 type="file"
                                 accept="image/*"
-                                style={{ display: "none" }}
+                                className="add-listing-photo-input"
                                 onChange={(event) => {
                                   handleRoomImage(room.id, imageIndex, event.target.files?.[0] ?? null);
                                   event.target.value = "";
@@ -908,13 +888,13 @@ export default function AddListing() {
                 <div className="form-panel">
                   <div className="field">
                     <label>Exterior Image *</label>
-                    <div className={`upload-grid${step2Submitted && !exteriorFile ? " upload-grid-error" : ""}`} style={{ gridTemplateColumns: "minmax(0, 260px)" }}>
+                    <div className={`upload-grid add-listing-exterior-grid${step2Submitted && !exteriorFile ? " upload-grid-error" : ""}`}>
                       <label className={`upload-card ${exteriorPreview ? "has-image" : ""}`}>
                         {exteriorPreview ? <img src={exteriorPreview} alt="Exterior" /> : null}
                         {!exteriorPreview ? (
                           <>
-                            <ImageUp size={24} style={{ position: "relative", zIndex: 1 }} />
-                            <span style={{ position: "relative", zIndex: 1 }}>Upload File</span>
+                            <ImageUp size={24} className="add-listing-upload-icon" />
+                            <span className="add-listing-upload-text">Upload File</span>
                           </>
                         ) : (
                           <button
@@ -932,7 +912,7 @@ export default function AddListing() {
                         <input
                           type="file"
                           accept="image/*"
-                          style={{ display: "none" }}
+                          className="add-listing-photo-input"
                           onChange={(event) => {
                             const file = event.target.files?.[0];
                             if (!file) return;
@@ -965,11 +945,11 @@ export default function AddListing() {
                 <div className="success-mark">
                   <Check size={54} />
                 </div>
-                <h2 style={{ fontSize: "3rem", marginBottom: 12 }}>Successfully Published!</h2>
-                <p style={{ fontSize: "1.18rem", marginBottom: 28 }}>
+                <h2 className="add-listing-success-title">Successfully Published!</h2>
+                <p className="add-listing-success-desc">
                   Your property is now active and visible to potential tenants.
                 </p>
-                <div style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap" }}>
+                <div className="add-listing-success-actions">
                   <button className="btn btn-dark" onClick={() => navigate("/my-properties")}>
                     View All Listings
                   </button>

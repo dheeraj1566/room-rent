@@ -1,0 +1,139 @@
+/* ContactedProperties Page Styles */
+
+.contacted-properties-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.contacted-properties-header-content p {
+  margin-bottom: 12px;
+}
+
+.contacted-properties-header-title {
+  font-size: 3rem;
+  line-height: 1.05;
+  margin-bottom: 10px;
+}
+
+.contacted-properties-skeleton {
+  height: 280px;
+  border-radius: 22px;
+}
+
+.contacted-properties-empty-icon {
+  color: var(--slate-600);
+  margin-bottom: 14px;
+}
+
+.contacted-properties-empty-title {
+  margin-bottom: 8px;
+}
+
+.contacted-properties-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.contacted-properties-card-status {
+  font-weight: 700;
+}
+
+.contacted-properties-card-active {
+  color: var(--green-500);
+}
+
+.contacted-properties-card-inactive {
+  color: var(--slate-600);
+}
+
+.contacted-properties-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.contacted-properties-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-color);
+  background: var(--white);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.contacted-properties-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 36px rgba(16, 24, 40, 0.12);
+}
+
+.contacted-properties-card .listing-card-image {
+  aspect-ratio: 1.42 / 1;
+}
+
+.contacted-properties-card .listing-card-content {
+  padding: 14px 14px 12px;
+}
+
+.contacted-properties-card .listing-card-title {
+  font-size: 0.96rem;
+}
+
+.contacted-properties-no-image {
+  font-weight: 700;
+}
+
+.contacted-properties-card-content {
+  padding: 18px;
+}
+
+.contacted-properties-card-meta {
+  margin-bottom: 16px;
+}
+
+.contacted-properties-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.contacted-properties-card-status {
+  font-weight: 700;
+}
+
+.contacted-properties-card-active {
+  color: var(--green-500);
+}
+
+.contacted-properties-card-inactive {
+  color: var(--slate-600);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .contacted-properties-header {
+    flex-direction: column;
+  }
+
+  .contacted-properties-header-title {
+    font-size: 2rem;
+  }
+
+  .contacted-properties-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .contacted-properties-card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

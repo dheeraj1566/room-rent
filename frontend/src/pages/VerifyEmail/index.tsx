@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { CheckCircle, XCircle, Loader, Mail } from "lucide-react";
+import "./VerifyEmail.css";
 import brandLogo from "../../assets/Roombaazi Final Logo.png";
 import { apiFetch } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
@@ -65,53 +66,46 @@ export default function VerifyEmail() {
             <img src={brandLogo} alt="Roombaazi" />
           </div>
 
-          <div className="surface-card auth-card" style={{ textAlign: "center", padding: "48px 40px" }}>
+          <div className="surface-card auth-card verify-email-card">
             {status === "verifying" && (
               <>
-                <Loader size={48} style={{ color: "var(--orange-500)", marginBottom: 20, animation: "spin 1s linear infinite" }} />
-                <h2 style={{ marginBottom: 10 }}>Verifying your email…</h2>
-                <p style={{ color: "var(--text-secondary)" }}>Hang tight, this only takes a second.</p>
+                <Loader size={48} className="verify-email-loader" />
+                <h2 className="verify-email-loading-title">Verifying your email…</h2>
+                <p className="verify-email-loading-subtitle">Hang tight, this only takes a second.</p>
               </>
             )}
 
             {status === "success" && (
               <>
-                <CheckCircle size={52} style={{ color: "#22c55e", marginBottom: 20 }} />
-                <h2 style={{ marginBottom: 10 }}>Email Confirmed!</h2>
-                <p style={{ color: "var(--text-secondary)", marginBottom: 24 }}>
+                <CheckCircle size={52} className="verify-email-success-icon" />
+                <h2 className="verify-email-success-title">Email Confirmed!</h2>
+                <p className="verify-email-success-subtitle">
                   Welcome to Roombaazi! Your account is now active.<br />
                   Redirecting you to browse rooms…
                 </p>
-                <div style={{ width: 200, height: 4, background: "var(--border-color)", borderRadius: 4, margin: "0 auto", overflow: "hidden" }}>
-                  <div
-                    style={{
-                      height: "100%",
-                      background: "var(--orange-500)",
-                      borderRadius: 4,
-                      animation: "grow-bar 2.8s linear forwards",
-                    }}
-                  />
+                <div className="verify-email-progress-bar">
+                  <div className="verify-email-progress-fill" />
                 </div>
               </>
             )}
 
             {status === "error" && (
               <>
-                <XCircle size={52} style={{ color: "#ef4444", marginBottom: 20 }} />
-                <h2 style={{ marginBottom: 10 }}>Verification Failed</h2>
-                <p style={{ color: "var(--text-secondary)", marginBottom: 24 }}>{errorMsg}</p>
+                <XCircle size={52} className="verify-email-error-icon" />
+                <h2 className="verify-email-error-title">Verification Failed</h2>
+                <p className="verify-email-error-message">{errorMsg}</p>
 
                 {resendStatus === "sent" ? (
                   <>
-                    <Mail size={36} style={{ color: "var(--orange-500)", marginBottom: 12 }} />
-                    <p style={{ color: "var(--text-secondary)", marginBottom: 20 }}>
+                    <Mail size={36} className="verify-email-resend-icon" />
+                    <p className="verify-email-resend-description">
                       A new verification link has been sent if that email exists and is unverified.
                     </p>
                   </>
                 ) : (
                   <>
-                    <p style={{ fontWeight: 600, marginBottom: 10 }}>Get a new verification link</p>
-                    <div style={{ display: "flex", gap: 8, maxWidth: 360, margin: "0 auto 20px" }}>
+                    <p className="verify-email-resend-label">Get a new verification link</p>
+                    <div className="verify-email-resend-inputs">
                       <input
                         className="input-style"
                         type="email"

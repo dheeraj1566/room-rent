@@ -22,6 +22,7 @@ import { useToast } from "../../context/ToastContext";
 import Navbar from "../../components/Navbar";
 import SiteFooter from "../../components/SiteFooter";
 import Skeleton from "../../components/Skeleton";
+import "./ListingDetails.css";
 
 type ListingPhoto = {
   photoType: "Room" | "Exterior";
@@ -114,7 +115,7 @@ function formatDisplayDate(value: string) {
 
 function ReviewStars({ value, size = 16 }: { value: number; size?: number }) {
   return (
-    <div style={{ display: "flex", gap: 4 }}>
+    <div className="listing-details-review-stars">
       {[1, 2, 3, 4, 5].map((star) => (
         <Star
           key={star}
@@ -426,47 +427,38 @@ export default function ListingDetailsPage() {
           <div className="page-container">
             {loading ? (
               <div className="details-layout">
-                <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                  <div className="surface-card" style={{ padding: 18 }}>
-                    <Skeleton style={{ width: "100%", aspectRatio: "1.6 / 1", borderRadius: 22 }} />
-                    <div style={{ display: "flex", gap: 12, marginTop: 14 }}>
+                <div className="listing-details-skeleton-wrapper">
+                  <div className="surface-card listing-details-image-card">
+                    <Skeleton className="listing-details-skeleton-main" />
+                    <div className="listing-details-skeleton-thumbnails">
                       {Array.from({ length: 4 }).map((_, index) => (
-                        <Skeleton key={index} style={{ width: 92, height: 72, borderRadius: 16 }} />
+                        <Skeleton key={index} className="listing-details-skeleton-thumbnail" />
                       ))}
                     </div>
                   </div>
-                  <Skeleton style={{ height: 140, borderRadius: 24 }} />
-                  <Skeleton style={{ height: 200, borderRadius: 24 }} />
+                  <Skeleton className="listing-details-skeleton-info" />
+                  <Skeleton className="listing-details-skeleton-landlord" />
                 </div>
-                <Skeleton style={{ height: 360, borderRadius: 24 }} />
+                <Skeleton className="listing-details-skeleton-sidebar" />
               </div>
             ) : errorMsg ? (
               <div className="error-banner">{errorMsg}</div>
             ) : item ? (
               <div className="details-layout details-layout--loaded">
-                <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-                  <section className="surface-card" style={{ padding: 18 }}>
-                    <div
-                      style={{
-                        position: "relative",
-                        borderRadius: 26,
-                        overflow: "hidden",
-                        border: "1px solid var(--border-color)",
-                        background: "var(--slate-100)",
-                        aspectRatio: "1.68 / 1",
-                      }}
-                    >
+                <div className="listing-details-content">
+                  <section className="surface-card listing-details-image-card">
+                    <div className="listing-details-image-viewer">
                       {allPhotos.length > 0 ? (
                         <img
                           key={sliderIndex}
                           src={allPhotos[sliderIndex].photoUrl}
                           alt={item.title}
-                          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+                          className="listing-details-image-main"
                         />
                       ) : (
-                        <div className="listing-card-placeholder" style={{ height: "100%" }}>
+                        <div className="listing-card-placeholder listing-details-image-placeholder">
                           <Home size={72} />
-                          <span style={{ fontWeight: 700 }}>NO IMAGE YET</span>
+                          <span className="listing-details-image-placeholder-text">NO IMAGE YET</span>
                         </div>
                       )}
 
@@ -474,64 +466,27 @@ export default function ListingDetailsPage() {
                         <>
                           <button
                             onClick={() => setSliderIndex((i) => (i - 1 + allPhotos.length) % allPhotos.length)}
-                            style={{
-                              position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
-                              width: 38, height: 38, borderRadius: "50%", border: "none",
-                              background: "rgba(255,255,255,0.88)", cursor: "pointer",
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                              boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
-                            }}
+                            className="listing-details-nav-btn listing-details-nav-btn-prev"
                           >
                             <ChevronLeft size={20} />
                           </button>
                           <button
                             onClick={() => setSliderIndex((i) => (i + 1) % allPhotos.length)}
-                            style={{
-                              position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
-                              width: 38, height: 38, borderRadius: "50%", border: "none",
-                              background: "rgba(255,255,255,0.88)", cursor: "pointer",
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                              boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
-                            }}
+                            className="listing-details-nav-btn listing-details-nav-btn-next"
                           >
                             <ChevronRight size={20} />
                           </button>
-                          <div
-                            style={{
-                              position: "absolute",
-                              left: 12,
-                              right: 12,
-                              bottom: 12,
-                              display: "flex",
-                              justifyContent: "center",
-                              gap: 8,
-                              overflowX: "auto",
-                              paddingBottom: 2,
-                            }}
-                          >
+                          <div className="listing-details-thumbnails-overlay">
                             {allPhotos.map((photo, i) => (
                               <button
                                 key={i}
                                 onClick={() => setSliderIndex(i)}
-                                style={{
-                                  width: 58,
-                                  height: 42,
-                                  borderRadius: 10,
-                                  border: i === sliderIndex ? "2px solid var(--orange-500)" : "2px solid rgba(255,255,255,0.5)",
-                                  background: "rgba(255,255,255,0.35)",
-                                  cursor: "pointer",
-                                  padding: 0,
-                                  overflow: "hidden",
-                                  flex: "0 0 auto",
-                                  boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
-                                  transition: "border-color 0.2s ease, transform 0.2s ease",
-                                  transform: i === sliderIndex ? "translateY(-1px)" : "none",
-                                }}
+                                className={`listing-details-thumb-btn${i === sliderIndex ? " is-active" : ""}`}
                               >
                                 <img
                                   src={photo.photoUrl}
                                   alt={`${item.title} preview ${i + 1}`}
-                                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                                  className="listing-details-thumb-image"
                                 />
                               </button>
                             ))}
@@ -541,15 +496,15 @@ export default function ListingDetailsPage() {
                     </div>
                   </section>
 
-                  <section className="surface-card" style={{ padding: 28 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 18, flexWrap: "wrap", marginBottom: 18 }}>
+                  <section className="surface-card listing-details-property-card">
+                    <div className="listing-details-info-header">
                       <div>
-                        <span className="badge badge-soft" style={{ marginBottom: 14 }}>
+                        <span className="badge badge-soft listing-details-badge">
                           <Clock3 size={14} />
                           Added {formatDisplayDate(item.createdAt)}
                         </span>
-                        <h1 style={{ fontSize: "2.15rem", lineHeight: 1.1, marginBottom: 10 }}>{item.title}</h1>
-                        <p style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <h1 className="listing-details-page-title">{item.title}</h1>
+                        <p className="listing-details-page-location">
                           <MapPin size={16} />
                           {item.addressLine}, {item.colony}, {item.city}, {item.state} - {item.pincode}
                         </p>
@@ -563,7 +518,7 @@ export default function ListingDetailsPage() {
                       ) : null}
                     </div>
 
-                    <div className="listing-card-meta" style={{ marginBottom: item.description ? 16 : 0 }}>
+                    <div className={`listing-card-meta${item.description ? " listing-details-meta-wrapper" : ""}`}>
                       <span className="listing-card-meta-item">
                         <BadgeIndianRupee size={16} />
                         ₹{item.monthlyRent.toLocaleString("en-IN")}/month
@@ -579,53 +534,45 @@ export default function ListingDetailsPage() {
                     </div>
 
                     {item.description ? (
-                      <div style={{ paddingTop: 18, borderTop: "1px solid var(--slate-200)" }}>
-                        <h2 style={{ fontSize: "1.35rem", marginBottom: 10 }}>About this property</h2>
+                      <div className="listing-details-about-section">
+                        <h2 className="listing-details-about-title">About this property</h2>
                         <p>{item.description}</p>
                       </div>
                     ) : null}
                   </section>
 
-                  <section className="surface-card" style={{ padding: 28 }}>
-                    <h2 style={{ fontSize: "1.35rem", marginBottom: 16 }}>Property Details</h2>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+                  <section className="surface-card listing-details-property-card">
+                    <h2 className="listing-details-section-title">Property Details</h2>
+                    <div className="listing-details-property-grid">
                       {detailItems.map((detail) => (
-                        <div
-                          key={detail.label}
-                          style={{
-                            border: "1px solid var(--slate-200)",
-                            background: "var(--slate-100)",
-                            borderRadius: 18,
-                            padding: "14px 16px",
-                          }}
-                        >
-                          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: "0.82rem", fontWeight: 800, color: "var(--slate-700)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
+                        <div key={detail.label} className="listing-details-property-item">
+                          <div className="listing-details-property-label">
                             {detail.icon}
                             {detail.label}
                           </div>
-                          <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--navy-900)" }}>{detail.value}</div>
+                          <div className="listing-details-property-value">{detail.value}</div>
                         </div>
                       ))}
                     </div>
                   </section>
 
-                  <section className="surface-card" style={{ padding: 28 }}>
-                    <h2 style={{ fontSize: "1.35rem", marginBottom: 16 }}>Location</h2>
-                    <div style={{ borderRadius: 24, overflow: "hidden", border: "1px solid var(--slate-200)" }}>
+                  <section className="surface-card listing-details-location-card">
+                    <h2 className="listing-details-section-title">Location</h2>
+                    <div className="listing-details-map-container">
                       <iframe
                         title="Property location"
                         src={mapUrl}
-                        style={{ width: "100%", height: "clamp(240px, 52vw, 420px)", border: 0 }}
+                        className="listing-details-map-iframe"
                         loading="lazy"
                         referrerPolicy="no-referrer-when-downgrade"
                       />
                     </div>
                   </section>
 
-                  <section className="surface-card" style={{ padding: 28 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
+                  <section className="surface-card listing-details-reviews-card">
+                    <div className="listing-details-reviews-header">
                       <div>
-                        <h2 style={{ fontSize: "1.35rem", marginBottom: 4 }}>Landlord Reviews</h2>
+                        <h2 className="listing-details-reviews-title">Landlord Reviews</h2>
                         <p>
                           {avgRating ? `${avgRating.toFixed(1)} ★` : "No rating yet"} · {testimonials.length} review{testimonials.length !== 1 ? "s" : ""}
                         </p>
@@ -634,50 +581,22 @@ export default function ListingDetailsPage() {
                     </div>
 
                     {testimonialsLoading ? (
-                      <Skeleton style={{ height: 140, borderRadius: 18 }} />
+                      <Skeleton className="listing-details-review-skeleton" />
                     ) : testimonials.length === 0 ? (
-                      <div
-                        style={{
-                          borderRadius: 22,
-                          background: "var(--slate-100)",
-                          padding: 24,
-                          textAlign: "center",
-                        }}
-                      >
+                      <div className="listing-details-review-empty">
                         <p>No reviews yet.</p>
                       </div>
                     ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                      <div className="listing-details-review-list">
                         {testimonials.map((testimonial) => (
-                          <div
-                            key={testimonial.testimonialId}
-                            style={{
-                              border: "1px solid var(--slate-200)",
-                              background: "white",
-                              borderRadius: 20,
-                              padding: 18,
-                            }}
-                          >
-                            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-                              <div
-                                style={{
-                                  width: 42,
-                                  height: 42,
-                                  borderRadius: "50%",
-                                  overflow: "hidden",
-                                  background: "linear-gradient(180deg, #fff2e2 0%, #f6f7fb 100%)",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  fontWeight: 800,
-                                  color: "var(--navy-800)",
-                                }}
-                              >
+                          <div key={testimonial.testimonialId} className="listing-details-review-item">
+                            <div className="listing-details-review-item-header">
+                              <div className="listing-details-review-avatar">
                                 {testimonial.reviewerPhoto ? (
                                   <img
                                     src={testimonial.reviewerPhoto}
                                     alt={testimonial.reviewerName}
-                                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                    className="listing-details-review-avatar-image"
                                   />
                                 ) : (
                                   testimonial.reviewerName.charAt(0).toUpperCase()
@@ -685,13 +604,13 @@ export default function ListingDetailsPage() {
                               </div>
 
                               <div>
-                                <div style={{ fontWeight: 700, color: "var(--navy-900)" }}>{testimonial.reviewerName}</div>
-                                <div style={{ fontSize: "0.84rem", color: "var(--slate-600)" }}>
+                                <div className="listing-details-review-name">{testimonial.reviewerName}</div>
+                                <div className="listing-details-review-meta">
                                   {testimonial.reviewerRole} · {formatDisplayDate(testimonial.createdAt)}
                                 </div>
                               </div>
 
-                              <div style={{ marginLeft: "auto" }}>
+                              <div className="listing-details-review-stars-right">
                                 <ReviewStars value={testimonial.rating} size={14} />
                               </div>
                             </div>
@@ -703,23 +622,23 @@ export default function ListingDetailsPage() {
                     )}
 
                     {!user ? (
-                      <div style={{ marginTop: 18, paddingTop: 18, borderTop: "1px solid var(--slate-200)" }}>
+                      <div className="listing-details-review-note">
                         <p>
                           <a href="/login" className="link-accent">Log in</a> to write a review.
                         </p>
                       </div>
                     ) : user.id === item.landlordId ? (
-                      <div style={{ marginTop: 18, paddingTop: 18, borderTop: "1px solid var(--slate-200)" }}>
+                      <div className="listing-details-review-note">
                         <p>You cannot review your own listing.</p>
                       </div>
                     ) : !myConnection?.isConnected ? (
-                      <div style={{ marginTop: 18, paddingTop: 18, borderTop: "1px solid var(--slate-200)" }}>
+                      <div className="listing-details-review-note">
                         <p>Connect with the owner and get your deal confirmed to leave a review.</p>
                       </div>
                     ) : (
-                      <div style={{ marginTop: 18, paddingTop: 18, borderTop: "1px solid var(--slate-200)" }}>
-                        <h3 style={{ fontSize: "1.05rem", marginBottom: 10 }}>{myReview ? "Edit Your Review" : "Write a Review"}</h3>
-                        <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
+                      <div className="listing-details-review-note">
+                        <h3 className="listing-details-review-form-title">{myReview ? "Edit Your Review" : "Write a Review"}</h3>
+                        <div className="listing-details-review-stars-form">
                           {[1, 2, 3, 4, 5].map((star) => (
                             <button
                               key={star}
@@ -727,7 +646,7 @@ export default function ListingDetailsPage() {
                               onMouseEnter={() => setReviewHover(star)}
                               onMouseLeave={() => setReviewHover(0)}
                               onClick={() => setReviewRating(star)}
-                              style={{ background: "transparent", cursor: "pointer", padding: 2 }}
+                              className="listing-details-review-star-btn"
                             >
                               <Star
                                 size={22}
@@ -747,8 +666,7 @@ export default function ListingDetailsPage() {
                         />
 
                         <button
-                          className="btn btn-primary"
-                          style={{ marginTop: 14 }}
+                          className="btn btn-primary listing-details-review-submit"
                           onClick={() => void handleSubmitReview()}
                           disabled={submittingReview || reviewBody.trim().length === 0}
                         >
@@ -759,23 +677,23 @@ export default function ListingDetailsPage() {
                   </section>
                 </div>
 
-                <aside className="details-sidebar" style={{ position: "sticky", top: 104 }}>
-                  <div className="surface-card" style={{ padding: 24 }}>
-                    <div style={{ paddingBottom: 18, borderBottom: "1px solid var(--slate-200)", marginBottom: 18 }}>
-                      <div style={{ fontSize: "2.2rem", fontWeight: 800, color: "var(--navy-950)", lineHeight: 1 }}>
+                <aside className="details-sidebar listing-details-sidebar-sticky">
+                  <div className="surface-card listing-details-sidebar-card">
+                    <div className="listing-details-sidebar-price-block">
+                      <div className="listing-details-sidebar-price">
                         ₹{Number(item.monthlyRent).toLocaleString("en-IN")}
-                        <span style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--slate-600)" }}>/month</span>
+                        <span className="listing-details-sidebar-price-unit">/month</span>
                       </div>
-                      <p style={{ marginTop: 8 }}>
+                      <p className="listing-details-sidebar-occupants">
                         For {item.maxOccupants} occupant{item.maxOccupants > 1 ? "s" : ""}
                       </p>
 
                       {Array.isArray(item.rentTiers) && item.rentTiers.length > 0 ? (
-                        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div className="listing-details-rent-tiers">
                           {[...item.rentTiers]
                             .sort((a, b) => b.occupants - a.occupants)
                             .map((tier) => (
-                              <div key={tier.occupants} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
+                              <div key={tier.occupants} className="listing-details-rent-tier-row">
                                 <span>{tier.occupants} occupant{tier.occupants > 1 ? "s" : ""}</span>
                                 <strong>₹{Number(tier.rent).toLocaleString("en-IN")}</strong>
                               </div>
@@ -784,29 +702,21 @@ export default function ListingDetailsPage() {
                       ) : null}
 
                       {item.securityDeposit && item.securityDeposit > 0 ? (
-                        <p style={{ marginTop: 12 }}>
+                        <p className="listing-details-security-deposit">
                           Security Deposit: ₹{Number(item.securityDeposit).toLocaleString("en-IN")}
                         </p>
                       ) : null}
                     </div>
 
-                    <div
-                      style={{
-                        borderRadius: 20,
-                        background: "var(--slate-100)",
-                        border: "1px solid var(--slate-200)",
-                        padding: 16,
-                        marginBottom: 18,
-                      }}
-                    >
-                      <div style={{ fontSize: "0.84rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--slate-700)", marginBottom: 8 }}>
+                    <div className="listing-details-owner-box">
+                      <div className="listing-details-owner-label">
                         Property Owner
                       </div>
-                      <div style={{ fontSize: "1.12rem", fontWeight: 700, color: "var(--navy-900)" }}>{item.landlordName}</div>
+                      <div className="listing-details-owner-name">{item.landlordName}</div>
                     </div>
 
                     {!canEdit ? (
-                      <div style={{ marginBottom: 14 }}>
+                      <div className="listing-details-connect-block">
                         {!user ? (
                           <button className="btn btn-primary btn-block" onClick={() => navigate("/login")}>
                             Log in to Connect
@@ -816,18 +726,8 @@ export default function ListingDetailsPage() {
                             {connectingOwner ? "Sending Request..." : "Connect Owner"}
                           </button>
                         ) : myConnection.status === "Pending" ? (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                            <div
-                              style={{
-                                padding: "12px 14px",
-                                borderRadius: 16,
-                                background: "#fff7e8",
-                                border: "1px solid rgba(255,154,61,0.45)",
-                                color: "#b96817",
-                                fontWeight: 700,
-                                fontSize: "0.88rem",
-                              }}
-                            >
+                          <div className="listing-details-connect-stack">
+                            <div className="listing-details-status listing-details-status-pending">
                               Request Pending - awaiting owner response
                             </div>
                             <button
@@ -839,31 +739,11 @@ export default function ListingDetailsPage() {
                             </button>
                           </div>
                         ) : myConnection.status === "Rejected" ? (
-                          <div
-                            style={{
-                              padding: "12px 14px",
-                              borderRadius: 16,
-                              background: "rgba(255,95,87,0.08)",
-                              border: "1px solid rgba(255,95,87,0.25)",
-                              color: "#b3403a",
-                              fontWeight: 700,
-                              fontSize: "0.88rem",
-                            }}
-                          >
+                          <div className="listing-details-status listing-details-status-rejected">
                             Deal closed by owner
                           </div>
                         ) : (
-                          <div
-                            style={{
-                              padding: "12px 14px",
-                              borderRadius: 16,
-                              background: "var(--green-100)",
-                              border: "1px solid rgba(24,169,87,0.25)",
-                              color: "var(--green-500)",
-                              fontWeight: 700,
-                              fontSize: "0.88rem",
-                            }}
-                          >
+                          <div className="listing-details-status listing-details-status-connected">
                             Connected - deal confirmed
                           </div>
                         )}
@@ -875,7 +755,7 @@ export default function ListingDetailsPage() {
                     </button>
 
                     {canEdit ? (
-                      <button className="btn btn-dark btn-block" style={{ marginTop: 12 }} onClick={() => setIsEditing(true)}>
+                      <button className="btn btn-dark btn-block listing-details-edit-btn" onClick={() => setIsEditing(true)}>
                         Edit Property
                       </button>
                     ) : null}
@@ -890,28 +770,9 @@ export default function ListingDetailsPage() {
       <SiteFooter />
 
       {isEditing && item && editForm ? (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 40, 0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-            zIndex: 100,
-          }}
-        >
-          <div
-            className="surface-card"
-            style={{
-              width: "min(760px, 100%)",
-              maxHeight: "calc(100vh - 32px)",
-              overflowY: "auto",
-              padding: 26,
-            }}
-          >
-            <h2 style={{ fontSize: "1.45rem", marginBottom: 16 }}>Edit Property</h2>
+        <div className="listing-details-modal-overlay">
+          <div className="surface-card listing-details-modal-card">
+            <h2 className="listing-details-modal-title">Edit Property</h2>
 
             <div className="field-grid-2">
               <div className="field">
@@ -989,7 +850,7 @@ export default function ListingDetailsPage() {
                 />
               </div>
 
-              <div className="field" style={{ gridColumn: "1 / -1" }}>
+              <div className="field listing-details-field-fullwidth">
                 <label>Description</label>
                 <textarea
                   className="textarea-style"
@@ -1000,8 +861,8 @@ export default function ListingDetailsPage() {
                 />
               </div>
 
-              <div className="field" style={{ gridColumn: "1 / -1" }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div className="field listing-details-field-fullwidth">
+                <label className="listing-details-checkbox-label">
                   <input
                     type="checkbox"
                     checked={editForm.allowSmoking}
@@ -1013,9 +874,11 @@ export default function ListingDetailsPage() {
                 </label>
               </div>
 
-              <div className="field" style={{ gridColumn: "1 / -1" }}>
+              <div className="field listing-details-field-fullwidth">
                 <label>Exterior Image</label>
                 <input
+                  id="listing-details-exterior-upload"
+                  className="listing-details-upload-input-hidden"
                   type="file"
                   accept="image/*"
                   onChange={(event) => {
@@ -1028,14 +891,22 @@ export default function ListingDetailsPage() {
                     }
                   }}
                 />
+                <label htmlFor="listing-details-exterior-upload" className="listing-details-upload-trigger">
+                  <span className="listing-details-upload-trigger-title">
+                    {editExteriorFile ? editExteriorFile.name : "Upload exterior image"}
+                  </span>
+                  <span className="listing-details-upload-trigger-hint">PNG, JPG, WEBP</span>
+                </label>
               </div>
 
-              <div className="field" style={{ gridColumn: "1 / -1" }}>
+              <div className="field listing-details-field-fullwidth">
                 <label>Room Images (max 2)</label>
                 <div className="field-grid-2">
                   {[0, 1].map((index) => (
-                    <div key={index} style={{ border: "1px solid var(--slate-200)", borderRadius: 16, padding: 14 }}>
+                    <div key={index} className="listing-details-room-upload-box">
                       <input
+                        id={`listing-details-room-upload-${index}`}
+                        className="listing-details-upload-input-hidden"
                         type="file"
                         accept="image/*"
                         onChange={(event) => {
@@ -1055,13 +926,22 @@ export default function ListingDetailsPage() {
                           }
                         }}
                       />
+                      <label
+                        htmlFor={`listing-details-room-upload-${index}`}
+                        className="listing-details-upload-trigger"
+                      >
+                        <span className="listing-details-upload-trigger-title">
+                          {editRoomFiles[index] ? editRoomFiles[index]?.name : `Upload room image ${index + 1}`}
+                        </span>
+                        <span className="listing-details-upload-trigger-hint">PNG, JPG, WEBP</span>
+                      </label>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 18 }}>
+            <div className="listing-details-modal-actions">
               <button className="btn btn-outline" onClick={() => setIsEditing(false)} disabled={isSavingEdit}>
                 Cancel
               </button>

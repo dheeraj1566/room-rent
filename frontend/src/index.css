@@ -14,14 +14,21 @@
   --white: #ffffff;
   --orange-500: #ff9a3d;
   --orange-400: #ffb15d;
+  --orange-600: #d97706;
   --orange-100: #fff1de;
   --green-500: #18a957;
   --green-100: #dff8e8;
   --red-500: #ff5f57;
+  --red-600: #dc2626;
+  --red-700: #b91c1c;
+  --primary-500: #ff9a3d;
+  --primary-600: #ff8f2a;
+  --primary-500-rgb: 255, 154, 61;
 
   --text-main: var(--navy-950);
   --text-muted: var(--slate-700);
   --text-soft: var(--slate-500);
+  --text-secondary: var(--slate-600);
   --brand-secondary: var(--orange-500);
   --border-color: #e2e8f0;
   --page-bg: #f3f4f6;
@@ -2200,16 +2207,6 @@ select.select-style::-ms-expand {
   margin-top: 1.25rem;
 }
 
-/* Auth Page Layout */
-.auth-shell {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  background: var(--page-bg);
-}
-
 .auth-container {
   width: 100%;
   max-width: 460px;
@@ -2264,7 +2261,6 @@ select.select-style::-ms-expand {
 .footer {
   background: rgba(255, 255, 255, 0.9);
   border-top: 1px solid rgba(219, 228, 238, 0.85);
-  margin-top: 48px;
 }
 
 .footer-inner {
@@ -2403,6 +2399,40 @@ select.select-style::-ms-expand {
   background: transparent;
   color: var(--slate-600);
   cursor: pointer;
+}
+
+/* Utility Classes for Text Colors */
+.text-error {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.text-warning {
+  color: #92400e;
+  font-weight: 700;
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-slate-600 {
+  color: var(--slate-600);
+}
+
+.app-loading-shell {
+  padding: 24px;
+}
+
+.app-loading-skeleton-header {
+  height: 86px;
+  border-radius: 24px;
+  margin-bottom: 16px;
+}
+
+.app-loading-skeleton-content {
+  height: 420px;
+  border-radius: 24px;
 }
 
 @media (max-width: 1180px) {

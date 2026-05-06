@@ -32,9 +32,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div style={{ padding: "24px" }}>
-        <Skeleton style={{ height: 86, borderRadius: 24, marginBottom: 16 }} />
-        <Skeleton style={{ height: 420, borderRadius: 24 }} />
+      <div className="app-loading-shell">
+        <Skeleton className="app-loading-skeleton-header" />
+        <Skeleton className="app-loading-skeleton-content" />
       </div>
     );
   }

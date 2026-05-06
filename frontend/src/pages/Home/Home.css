@@ -1,0 +1,113 @@
+/* Home Page Styles */
+
+.home-header-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 26px;
+}
+
+.home-header-nav img {
+  height: 48px;
+  width: auto;
+}
+
+.home-header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.home-header-actions .btn {
+  padding: 8px 20px;
+  font-size: 14px;
+}
+
+.home-title {
+  margin-top: 14px;
+}
+
+.home-subtitle {
+  max-width: 680px;
+  margin: 14px auto 0;
+}
+
+.home-section-padded {
+  padding-top: 3rem;
+}
+
+.home-popular-label {
+  font-weight: 700;
+  color: var(--slate-700);
+}
+
+.home-view-all-link {
+  text-decoration: none;
+}
+
+.home-view-all-icon {
+  vertical-align: middle;
+}
+
+.home-featured-skeleton {
+  aspect-ratio: 1.24 / 1;
+}
+
+.home-skeleton-content {
+  padding: 18px;
+}
+
+.home-skeleton-title {
+  height: 22px;
+  width: 48%;
+  margin-bottom: 10px;
+}
+
+.home-skeleton-subtitle {
+  height: 18px;
+  width: 75%;
+  margin-bottom: 8px;
+}
+
+.home-skeleton-meta {
+  height: 18px;
+  width: 55%;
+}
+
+.home-cta-badge {
+  margin-bottom: 14px;
+}
+
+.home-cta-title {
+  font-size: 2.6rem;
+  margin-bottom: 8px;
+}
+
+.home-cta-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.home-cta-secondary {
+  color: white;
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .home-header-nav {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .home-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .home-cta-actions {
+    justify-content: center;
+  }
+}

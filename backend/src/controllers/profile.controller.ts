@@ -123,6 +123,41 @@ const isDuplicateKeyError = (error: unknown): boolean => {
   return (error as { code?: number }).code === 11000;
 };
 
+const toEncryptedBuffer = (value: unknown): Buffer | null => {
+  if (!value) return null;
+  if (Buffer.isBuffer(value)) return value;
+  if (value instanceof Uint8Array) return Buffer.from(value);
+
+  if (typeof value === "object") {
+    const candidate = value as {
+      value?: () => Uint8Array;
+      buffer?: Uint8Array;
+      sub_type?: number;
+      $binary?: { base64?: string };
+    };
+
+    if (typeof candidate.value === "function") {
+      try {
+        const normalized = candidate.value();
+        if (normalized instanceof Uint8Array) return Buffer.from(normalized);
+      } catch {
+        // Fall through to other representations.
+      }
+    }
+
+    if (candidate.buffer instanceof Uint8Array) {
+      return Buffer.from(candidate.buffer);
+    }
+
+    const base64 = candidate.$binary?.base64;
+    if (typeof base64 === "string" && base64.length > 0) {
+      return Buffer.from(base64, "base64");
+    }
+  }
+
+  return null;
+};
+
 const getProfileByUserId = async (userId: string) => {
   const user = await User.findById(userId).lean();
   if (!user) return null;
@@ -133,23 +168,20 @@ const getProfileByUserId = async (userId: string) => {
     email: user.email ?? null,
     location: user.permanentAddress ?? null,
     aadhaar: (() => {
-      const encryptedBuffer = user.aadhaarEncrypted;
+      const encryptedBuffer = toEncryptedBuffer(user.aadhaarEncrypted);
       if (!encryptedBuffer || encryptedBuffer.length === 0) return null;
+
+      const rawUtf8 = encryptedBuffer.toString("utf8").trim();
+      if (/^\d{12}$/.test(rawUtf8)) {
+        // Backward compatibility for records where plain Aadhaar digits were
+        // accidentally stored as binary instead of encrypted payload.
+        return rawUtf8.slice(-4);
+      }
       
       try {
-        // Handle both Buffer and BSON Binary objects from MongoDB
-        let buffer: Buffer;
-        if (Buffer.isBuffer(encryptedBuffer)) {
-          buffer = encryptedBuffer;
-        } else {
-          // BSON Binary: has .buffer (Uint8Array) property
-          const bsonBuf = (encryptedBuffer as { buffer?: Uint8Array }).buffer;
-          if (!bsonBuf) return null;
-          buffer = Buffer.from(bsonBuf);
-        }
-        
         // Return only last 4 digits — never expose full Aadhaar to client
-        const decrypted = CryptoService.decrypt(buffer);
+        const decrypted = CryptoService.decrypt(encryptedBuffer);
+        if (!/^\d{12}$/.test(decrypted)) return null;
         return decrypted.slice(-4);
       } catch (error) {
         console.error('Failed to decrypt Aadhaar:', error);

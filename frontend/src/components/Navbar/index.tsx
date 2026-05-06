@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { User, ArrowRightToLine, Plus, Heart, Menu, X, Inbox, Bell } from "lucide-react";
+import "./Navbar.css";
 import { useAuth } from "../../context/AuthContext";
 import brandLogo from "../../assets/Roombaazi Final Logo.png";
 import {

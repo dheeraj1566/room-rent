@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import "./FilterSidebar.css";
 
 type FilterState = {
   search: string;
@@ -72,8 +73,8 @@ export default function FilterSidebar({
 
   return (
     <aside className="filter-panel">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-        <h3 style={{ fontSize: "1.9rem" }}>Filters</h3>
+      <div className="filter-header">
+        <h3 className="filter-title">Filters</h3>
         <button className="btn btn-ghost" onClick={handleClear}>
           Clear all
         </button>
@@ -293,7 +294,7 @@ export default function FilterSidebar({
         </div>
       </div>
 
-      <button className="btn btn-dark btn-block" style={{ marginTop: 24 }} onClick={handleApply}>
+      <button className="btn btn-dark btn-block filter-apply-btn" onClick={handleApply}>
         Apply Filters
       </button>
     </aside>

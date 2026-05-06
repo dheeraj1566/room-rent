@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BedDouble, Heart, Home, MapPin, Sofa, Users } from "lucide-react";
+import "./ListingCard.css";
 
 type ListingCardProps = {
   listingId: string;
@@ -62,7 +63,7 @@ export default function ListingCard({
 
   return (
     <article
-      className="listing-card"
+      className="listing-card listing-card-wrapper"
       onClick={() => navigate(`/listings/${listingId}`)}
       role="button"
       tabIndex={0}
@@ -73,13 +74,13 @@ export default function ListingCard({
         }
       }}
     >
-      <div className="listing-card-image">
+      <div className="listing-card-image-wrapper">
         <div className="listing-card-badges">
           <div className="listing-card-badges-left">
-            <span className="badge badge-dark" style={{ padding: "6px 10px", fontSize: "0.75rem" }}>
+            <span className="badge badge-dark listing-card-badge">
               {propertyLabel}
             </span>
-            <span className="badge badge-verified" style={{ padding: "6px 10px", fontSize: "0.75rem" }}>
+            <span className="badge badge-verified listing-card-badge">
               Verified
             </span>
           </div>
@@ -97,11 +98,11 @@ export default function ListingCard({
         </div>
 
         {coverPhotoUrl && !imageError ? (
-          <img src={coverPhotoUrl} alt={title} onError={() => setImageError(true)} />
+          <img className="listing-card-image" src={coverPhotoUrl} alt={title} onError={() => setImageError(true)} />
         ) : (
           <div className="listing-card-placeholder">
             <Home size={74} />
-            <span style={{ fontWeight: 700, fontSize: "0.95rem" }}>NO IMAGE YET</span>
+            <span className="listing-card-placeholder-text">NO IMAGE YET</span>
           </div>
         )}
       </div>
@@ -135,7 +136,7 @@ export default function ListingCard({
             <Sofa size={14} />
             {furnishingName}
           </span>
-          <span className="listing-card-meta-item" style={{ color: "var(--orange-500)", fontWeight: 700 }}>
+          <span className="listing-card-meta-item listing-card-meta-item-highlighted">
             <BedDouble size={14} />
             Amenities
           </span>

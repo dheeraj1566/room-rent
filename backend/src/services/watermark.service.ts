@@ -52,31 +52,51 @@ export class WatermarkService {
       // Font size proportional to banner height
       const fontSize = Math.floor(bannerHeight * 0.52);
       const brandText = opts.text;
+      const safeBrandText = brandText
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 
-      // SVG text for the brand name (white, bold, vertically centred in banner)
+      // Text receives its own dark pill background; the rest stays transparent.
+      const textPaddingX = Math.max(8, Math.floor(fontSize * 0.45));
+      const textPillHeight = Math.max(fontSize + 8, Math.floor(bannerHeight * 0.72));
+      const textWidth = Math.ceil(brandText.length * fontSize * 0.62) + textPaddingX * 2;
+      const textY = Math.floor((textPillHeight + fontSize * 0.36) / 2);
+
       const textSvgBuffer = Buffer.from(
         `<svg xmlns="http://www.w3.org/2000/svg"
-              width="${Math.ceil(brandText.length * fontSize * 0.62) + 8}"
-              height="${bannerHeight}">
+              width="${textWidth}"
+              height="${textPillHeight}">
+          <rect
+            x="0"
+            y="0"
+            width="${textWidth}"
+            height="${textPillHeight}"
+            rx="${Math.floor(textPillHeight / 2)}"
+            ry="${Math.floor(textPillHeight / 2)}"
+            fill="rgba(0,0,0,0.72)"
+          />
           <text
-            x="2"
-            y="${Math.floor(bannerHeight * 0.68)}"
+            x="${textPaddingX}"
+            y="${textY}"
             font-family="Arial, Helvetica, sans-serif"
             font-size="${fontSize}"
             font-weight="bold"
             fill="white"
             letter-spacing="1"
-          >${brandText}</text>
+          >${safeBrandText}</text>
         </svg>`
       );
 
-      // Build the banner: dark semi-transparent background + logo + text
+      // Build a transparent overlay layer so only text has background treatment.
       const banner = await sharp({
         create: {
           width: imgWidth,
           height: bannerHeight,
           channels: 4,
-          background: { r: 0, g: 0, b: 0, alpha: 0.72 },
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
         },
       })
         .composite([
@@ -91,7 +111,7 @@ export class WatermarkService {
           {
             input: textSvgBuffer,
             left: padding + logoWidth + padding,
-            top: 0,
+            top: Math.floor((bannerHeight - textPillHeight) / 2),
             blend: 'over',
           },
         ])

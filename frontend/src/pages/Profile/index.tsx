@@ -7,6 +7,7 @@ import { ApiError, apiFetch } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import Skeleton from "../../components/Skeleton";
+import "./Profile.css";
 
 type Profile = {
   fullName: string | null;
@@ -153,10 +154,10 @@ export default function ProfilePage() {
         <section className="page-section">
           <div className="page-container">
             <div className="profile-hero">
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 20, flexWrap: "wrap", alignItems: "start" }}>
+              <div className="profile-header-flex">
                 <div>
-                  <p className="eyebrow" style={{ marginBottom: 12 }}>Account Center</p>
-                  <h1 style={{ fontSize: "3rem", lineHeight: 1.05, marginBottom: 10 }}>My Profile</h1>
+                  <p className="eyebrow profile-eyebrow">Account Center</p>
+                  <h1 className="profile-title">My Profile</h1>
                   <p>Manage identity, contact details, and preferences.</p>
                 </div>
                 {authUser?.isVerified ? (
@@ -175,7 +176,7 @@ export default function ProfilePage() {
 
             {loading ? (
               <div className="surface-card profile-form-card">
-                <Skeleton style={{ height: 380, borderRadius: 24 }} />
+                <Skeleton className="profile-skeleton" />
               </div>
             ) : (
               <>
@@ -193,7 +194,7 @@ export default function ProfilePage() {
                           type="file"
                           accept="image/*"
                           onChange={(event) => void handlePhotoUpload(event)}
-                          style={{ display: "none" }}
+                          className="avatar-file-input"
                           disabled={uploading}
                         />
                       </label>
@@ -220,18 +221,18 @@ export default function ProfilePage() {
                             onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
                           />
                           {form.email !== initialForm.current.email && form.email.trim() ? (
-                            <span className="field-note" style={{ color: "#d97706" }}>
+                            <span className="field-note profile-note-warning">
                               A verification email will be sent to this new address on save.
                             </span>
                           ) : !authUser?.isVerified && form.email === initialForm.current.email && form.email.trim() ? (
-                            <span className="field-note" style={{ color: "#d97706" }}>
+                            <span className="field-note profile-note-warning">
                               Your email is not verified.
                             </span>
                           ) : null}
                         </div>
                         <div className="field">
                           <label>Gender</label>
-                          <div className="radio-inline" style={{ minHeight: 56 }}>
+                          <div className="radio-inline profile-radio-inline">
                             {(["Male", "Female", "Other"] as const).map((option) => (
                               <label key={option} className="checkbox-item">
                                 <input
@@ -275,7 +276,7 @@ export default function ProfilePage() {
                               : "Your Aadhaar number is permanent once saved. Please verify carefully."}
                           </span>
                         </div>
-                        <div className="field" style={{ gridColumn: "1 / -1" }}>
+                        <div className="field profile-field-fullwidth">
                           <label>Phone Number</label>
                           <input
                             className="input-style"
@@ -291,7 +292,7 @@ export default function ProfilePage() {
                         </div>
                       </div>
 
-                      <button className="btn btn-dark" style={{ marginTop: 18 }} onClick={() => void handleSave()} disabled={saving}>
+                      <button className="btn btn-dark profile-save-btn" onClick={() => void handleSave()} disabled={saving}>
                         {saving ? "Updating..." : "Update Profile"}
                       </button>
                     </div>

@@ -8,6 +8,7 @@ import { syncTenantRequestNotifications } from "../../lib/notifications";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import Skeleton from "../../components/Skeleton";
+import "./Dashboard.css";
 
 type Listing = {
   listingId: string;
@@ -330,40 +331,28 @@ export default function Dashboard() {
             </div>
             
             <div className="modal-body">
-              <div style={{ marginBottom: 20 }}>
-                <p style={{ marginBottom: 8 }}>
+              <div className="dashboard-modal-section">
+                <p className="dashboard-modal-section-title">
                   <strong>{selectedConnection.tenantName}</strong> wants to connect for:
                 </p>
-                <p style={{ color: "var(--slate-600)" }}>{selectedConnection.listingTitle}</p>
+                <p className="dashboard-modal-listing-title">{selectedConnection.listingTitle}</p>
               </div>
               
-              <div style={{ marginBottom: 24 }}>
+              <div className="dashboard-deal-section">
                 <label className="field-label">Final Deal Amount (₹/month)</label>
-                <div style={{ position: "relative" }}>
-                  <span style={{ 
-                    position: "absolute", 
-                    left: "12px", 
-                    top: "50%", 
-                    transform: "translateY(-50%)",
-                    color: "var(--slate-600)",
-                    fontWeight: 600
-                  }}>₹</span>
+                <div className="dashboard-deal-input-wrapper">
+                  <span className="dashboard-deal-currency">₹</span>
                   <input
                     type="number"
-                    className="input-style"
                     value={dealAmount}
-                    onChange={(e) => setDealAmount(e.target.value)}
+                      className="input-style dashboard-modal-span-text"
+                      onChange={(e) => setDealAmount(e.target.value)}
                     placeholder="Enter final amount"
-                    style={{ paddingLeft: "32px" }}
                     min="1000"
                     step="500"
                   />
                 </div>
-                <p style={{ 
-                  fontSize: "0.85rem", 
-                  color: "var(--slate-600)", 
-                  marginTop: 8 
-                }}>
+                <p className="dashboard-deal-note">
                   Original price: ₹{selectedConnection.monthlyRent.toLocaleString("en-IN")}/month
                 </p>
               </div>
@@ -392,10 +381,10 @@ export default function Dashboard() {
         <section className="page-section">
           <div className="page-container">
             <div className="dashboard-hero">
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 18, alignItems: "start", flexWrap: "wrap" }}>
+              <div className="dashboard-header">
                 <div>
-                  <p className="eyebrow" style={{ marginBottom: 10 }}>Owner Dashboard</p>
-                  <h1 style={{ lineHeight: 1.05, marginBottom: 10 }}>My Properties</h1>
+                  <p className="eyebrow">Owner Dashboard</p>
+                  <h1 className="dashboard-section-title">My Properties</h1>
                   <p>Manage listings and respond to tenant requests.</p>
                 </div>
                 <button className="btn btn-primary" onClick={() => navigate("/post-property")}>
@@ -407,7 +396,7 @@ export default function Dashboard() {
               <div className="dashboard-metrics">
                 <div className="metric-card">
                   <span>Active</span>
-                  <strong style={{ color: "var(--green-500)" }}>{activeCount}</strong>
+                  <strong className="dashboard-stat-value">{activeCount}</strong>
                 </div>
                 <div className="metric-card">
                   <span>Requests</span>
@@ -418,12 +407,12 @@ export default function Dashboard() {
 
             {errorMsg ? <div className="error-banner">{errorMsg}</div> : null}
 
-            <div className="listing-grid" style={{ marginBottom: 24 }}>
+            <div className="listing-grid dashboard-listings-section">
               {loading ? (
                 <>
                   {Array.from({ length: 2 }).map((_, index) => (
                     <div key={`dashboard-skeleton-${index}`} className="surface-card dashboard-property-card">
-                      <Skeleton style={{ height: 360, borderRadius: 24 }} />
+                      <Skeleton className="dashboard-listing-skeleton" />
                     </div>
                   ))}
                 </>
@@ -431,8 +420,8 @@ export default function Dashboard() {
                 <>
                   {items.length > 0 ? (
                     items.map((item) => (
-                      <article key={item.listingId} className="listing-card">
-                        <div className={`listing-card-image dot-grid${item.statusName !== "Active" ? " listing-card-image--dimmed" : ""}`}>
+                      <article key={item.listingId} className="listing-card listing-card-wrapper dashboard-listing-card">
+                        <div className={`listing-card-image-wrapper dot-grid dashboard-listing-image-wrap${item.statusName !== "Active" ? " listing-card-image--dimmed" : ""}`}>
                           <div className="listing-card-badges">
                             <div className="listing-card-badges-left">
                               <span className={`badge ${item.statusName === "Active" ? "badge-verified" : "badge-soft"}`}>
@@ -441,11 +430,11 @@ export default function Dashboard() {
                             </div>
                           </div>
                           {item.coverPhotoUrl ? (
-                            <img src={item.coverPhotoUrl} alt={item.title} style={{ opacity: item.statusName !== "Active" ? 0.55 : 1 }} />
+                            <img src={item.coverPhotoUrl} alt={item.title} className={`listing-card-image dashboard-listing-image ${item.statusName !== "Active" ? "inactive" : ""}`} />
                           ) : (
                             <div className="listing-card-placeholder">
                               <Inbox size={66} />
-                              <span style={{ fontWeight: 700 }}>NO IMAGE YET</span>
+                              <span className="dashboard-listing-no-image">NO IMAGE YET</span>
                             </div>
                           )}
                         </div>
@@ -460,7 +449,7 @@ export default function Dashboard() {
                             <MapPin size={16} />
                             {item.colony}, {item.city}
                           </div>
-                          <div className="listing-card-meta" style={{ marginBottom: 18 }}>
+                          <div className="dashboard-listing-meta">
                             <span className="listing-card-meta-item">
                               {renderOccupants(item.maxOccupants, item.listingId)}
                             </span>
@@ -473,24 +462,22 @@ export default function Dashboard() {
                               })}
                             </span>
                           </div>
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <div className="dashboard-listing-actions">
                             <button
-                              className="btn btn-outline btn-sm"
+                              className="btn btn-outline btn-sm dashboard-listing-action-fixed"
                               title={item.statusName === "Active" ? "Hide listing" : "Show listing"}
                               onClick={() => void handleToggleStatus(item.listingId)}
                               disabled={togglingStatusId === item.listingId}
-                              style={{ flex: "0 0 auto" }}
                             >
                               {item.statusName === "Active" ? <EyeOff size={15} /> : <Eye size={15} />}
                               {togglingStatusId === item.listingId ? "..." : item.statusName === "Active" ? "Hide" : "Show"}
                             </button>
-                            <button className="btn btn-dark btn-sm" style={{ flex: 1 }} onClick={() => navigate(`/listings/${item.listingId}`)}>
+                            <button className="btn btn-dark btn-sm dashboard-listing-action-edit" onClick={() => navigate(`/listings/${item.listingId}`)}>
                               <Pencil size={15} />
                               Edit
                             </button>
                             <button
-                              className="btn btn-outline btn-sm"
-                              style={{ color: "var(--red-500)", borderColor: "rgba(255,95,87,0.3)", flex: "0 0 auto" }}
+                              className="btn btn-outline btn-sm dashboard-listing-delete-btn"
                               onClick={() => void handleDelete(item.listingId)}
                               disabled={deletingId === item.listingId}
                             >
@@ -503,11 +490,11 @@ export default function Dashboard() {
                   ) : (
                     <div className="empty-dashed-card">
                       <div>
-                        <div className="feature-icon" style={{ margin: "0 auto 18px" }}>
+                        <div className="feature-icon dashboard-empty-state-icon">
                           <Plus size={22} />
                         </div>
-                        <h3 style={{ marginBottom: 6 }}>Post your first property</h3>
-                        <p style={{ marginBottom: 18 }}>It's free and takes 3 minutes</p>
+                        <h3 className="dashboard-empty-state-title">Post your first property</h3>
+                        <p className="dashboard-empty-state-desc">It's free and takes 3 minutes</p>
                         <button className="btn btn-primary" onClick={() => navigate("/post-property")}>
                           <Plus size={16} />
                           Post Property
@@ -518,10 +505,10 @@ export default function Dashboard() {
 
                   <div className="empty-dashed-card">
                     <div>
-                      <div className="feature-icon" style={{ margin: "0 auto 18px" }}>
+                      <div className="feature-icon dashboard-empty-state-icon">
                         <Plus size={22} />
                       </div>
-                      <h3 style={{ marginBottom: 6 }}>Post another property</h3>
+                      <h3 className="dashboard-empty-state-title">Post another property</h3>
                       <p>It's free and takes 3 minutes</p>
                     </div>
                   </div>
@@ -530,18 +517,18 @@ export default function Dashboard() {
             </div>
 
             <div className="surface-card tenant-requests-card">
-              <h2 style={{ fontSize: "2rem", marginBottom: 6 }}>Tenant Requests</h2>
-              <p style={{ marginBottom: 24 }}>
+              <h2 className="dashboard-section-title">Tenant Requests</h2>
+              <p className="dashboard-section-subtitle">
                 Tenants who want to connect with you. Confirm a deal to let them leave a review.
               </p>
 
               {connectionsLoading ? (
-                <Skeleton style={{ height: 220, borderRadius: 20 }} />
+                <Skeleton className="dashboard-requests-skeleton" />
               ) : connections.length === 0 ? (
                 <div className="request-empty">
                   <div>
-                    <Inbox size={48} style={{ color: "var(--slate-600)", marginBottom: 14 }} />
-                    <h3 style={{ marginBottom: 8 }}>No tenant requests yet</h3>
+                    <Inbox size={48} className="dashboard-requests-empty-icon" />
+                    <h3 className="dashboard-requests-empty-title">No tenant requests yet</h3>
                     <p>When tenants reach out, you'll see them here.</p>
                   </div>
                 </div>
@@ -551,58 +538,40 @@ export default function Dashboard() {
                     <div
                       id={`tenant-request-${connection.connectionId}`}
                       key={connection.connectionId}
-                      className="surface-card"
-                      style={{
-                        padding: 18,
-                        borderRadius: 18,
-                        border: focusedRequestId === connection.connectionId ? "2px solid var(--orange-500)" : undefined,
-                        boxShadow:
-                          focusedRequestId === connection.connectionId
-                            ? "0 0 0 4px rgba(255, 154, 61, 0.16), var(--shadow-card)"
-                            : undefined,
-                      }}
+                      className={`surface-card dashboard-request-item${focusedRequestId === connection.connectionId ? " is-focused" : ""}`}
                     >
                       <div className="tenant-request-row">
                         <div className="tenant-request-main">
-                          <h3 style={{ fontSize: "1.05rem", marginBottom: 6 }}>{connection.tenantName}</h3>
-                          <p style={{ marginBottom: 4 }}>{connection.listingTitle}</p>
+                          <h3 className="dashboard-request-tenantname">{connection.tenantName}</h3>
+                          <p className="dashboard-request-listingtitle">{connection.listingTitle}</p>
                           
                           {/* Occupant Information */}
                           <div className="tenant-request-meta">
-                            <span style={{ fontSize: "0.9rem", color: "var(--slate-700)" }}>
-                              <Users size={16} style={{ display: "inline", marginRight: 4 }} />
+                            <span className="dashboard-request-occupants">
+                              <Users size={16} className="dashboard-request-occupants-icon" />
                               Room Capacity: {connection.maxOccupants}
                             </span>
                             {connection.requestedOccupants ? (
-                              <span style={{ 
-                                fontSize: "0.9rem", 
-                                color: connection.requestedOccupants > connection.maxOccupants ? "var(--red-500)" : "var(--slate-700)",
-                                fontWeight: connection.requestedOccupants > connection.maxOccupants ? 600 : 500
-                              }}>
+                              <span className="dashboard-request-occupants-count">
                                 {connection.requestedOccupants > connection.maxOccupants ? "⚠ " : ""}
                                 Requested: {connection.requestedOccupants}
                               </span>
                             ) : (
-                              <span style={{ fontSize: "0.9rem", color: "var(--slate-500)" }}>
+                              <span className="dashboard-request-preference-tag">
                                 Requested: Not specified
                               </span>
                             )}
                           </div>
 
                           {connection.status === "Accepted" && connection.finalDealAmount && (
-                            <p style={{ 
-                              fontSize: "0.9rem", 
-                              color: "var(--green-500)", 
-                              fontWeight: 600,
-                              marginTop: 6 
-                            }}>
+                            <p className="dashboard-deal-amount">
                               Deal Amount: ₹{connection.finalDealAmount.toLocaleString("en-IN")}/month
                             </p>
                           )}
 
                           {connection.status === "Accepted" && (
                             <div className="rent-tracking-panel">
-                              <p style={{ marginBottom: 8, fontSize: "0.9rem", fontWeight: 600 }}>
+                              <p className="dashboard-rent-tracking-title">
                                 Monthly Rent Tracking
                               </p>
 
@@ -615,7 +584,7 @@ export default function Dashboard() {
                                   <input
                                     type="file"
                                     accept="image/*"
-                                    style={{ display: "none" }}
+                                    className="dashboard-modal-input-hidden"
                                     onChange={(e) => {
                                       const file = e.target.files?.[0] ?? null;
                                       setRentSlipFileByConnection((prev) => ({
@@ -626,16 +595,14 @@ export default function Dashboard() {
                                   />
                                 </label>
                                 <button
-                                  className="btn btn-sm"
-                                  style={{ background: "rgba(34,197,94,0.14)", color: "var(--green-500)" }}
+                                  className="btn btn-sm dashboard-rent-ontime-btn"
                                   onClick={() => void handleRentPaymentUpdate(connection, "OnTime")}
                                   disabled={processingConnectionId === connection.connectionId}
                                 >
                                   Mark On Time
                                 </button>
                                 <button
-                                  className="btn btn-sm"
-                                  style={{ background: "rgba(255,95,87,0.14)", color: "var(--red-500)" }}
+                                  className="btn btn-sm dashboard-rent-late-btn"
                                   onClick={() => void handleRentPaymentUpdate(connection, "Late")}
                                   disabled={processingConnectionId === connection.connectionId}
                                 >
@@ -644,7 +611,7 @@ export default function Dashboard() {
                               </div>
 
                               {rentSlipFileByConnection[connection.connectionId] ? (
-                                <p style={{ margin: "0 0 10px", color: "var(--slate-700)", fontSize: "0.83rem" }}>
+                                <p className="dashboard-rent-slip-info">
                                   Selected slip: {rentSlipFileByConnection[connection.connectionId]?.name}
                                 </p>
                               ) : null}
@@ -654,17 +621,7 @@ export default function Dashboard() {
                                   {connection.rentPayments.slice(0, 6).map((entry) => (
                                     <span
                                       key={`${connection.connectionId}-${entry.month}`}
-                                      className="badge"
-                                      style={{
-                                        background:
-                                          entry.paymentStatus === "OnTime"
-                                            ? "rgba(34,197,94,0.14)"
-                                            : "rgba(255,95,87,0.14)",
-                                        color:
-                                          entry.paymentStatus === "OnTime"
-                                            ? "var(--green-500)"
-                                            : "var(--red-500)",
-                                      }}
+                                      className={`badge ${entry.paymentStatus === "OnTime" ? "dashboard-rent-ontime-badge" : "dashboard-rent-late-badge"}`}
                                     >
                                       {entry.month}: {entry.paymentStatus === "OnTime" ? "On Time" : "Late"}
                                       {entry.paymentSlipUrl ? " • Slip" : ""}
@@ -672,7 +629,7 @@ export default function Dashboard() {
                                   ))}
                                 </div>
                               ) : (
-                                <p style={{ margin: 0, color: "var(--slate-600)", fontSize: "0.85rem" }}>
+                                <p className="dashboard-rent-no-records">
                                   No monthly rent records yet.
                                 </p>
                               )}

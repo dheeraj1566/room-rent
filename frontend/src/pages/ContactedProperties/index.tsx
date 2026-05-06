@@ -1,6 +1,7 @@
 import { CalendarDays, ExternalLink, Home, MapPin, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import "./ContactedProperties.css";
 import Navbar from "../../components/Navbar";
 import SiteFooter from "../../components/SiteFooter";
 import Skeleton from "../../components/Skeleton";
@@ -47,10 +48,10 @@ export default function ContactedPropertiesPage() {
         <section className="page-section">
           <div className="page-container">
             <div className="profile-hero">
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 20, flexWrap: "wrap", alignItems: "center" }}>
+              <div className="contacted-properties-header">
                 <div>
-                  <p className="eyebrow" style={{ marginBottom: 12 }}>Tenant Activity</p>
-                  <h1 style={{ fontSize: "3rem", lineHeight: 1.05, marginBottom: 10 }}>Contacted Properties</h1>
+                  <p className="eyebrow">Tenant Activity</p>
+                  <h1 className="contacted-properties-header-title">Contacted Properties</h1>
                   <p>{items.length} properties you have reached out to.</p>
                 </div>
                 <button className="btn btn-outline btn-sm" type="button" onClick={() => navigate("/browse")}>
@@ -61,19 +62,19 @@ export default function ContactedPropertiesPage() {
 
             <div className="surface-card liked-properties-card">
               {loading ? (
-                <Skeleton style={{ height: 280, borderRadius: 22 }} />
+                <Skeleton className="contacted-properties-skeleton" />
               ) : items.length === 0 ? (
                 <div className="request-empty">
                   <div>
-                    <Home size={48} style={{ color: "var(--slate-600)", marginBottom: 14 }} />
-                    <h3 style={{ marginBottom: 8 }}>You have not contacted any properties yet</h3>
+                    <Home size={48} className="contacted-properties-empty-icon" />
+                    <h3 className="contacted-properties-empty-title">You have not contacted any properties yet</h3>
                     <p>Once you contact an owner, the property will show up here.</p>
                   </div>
                 </div>
               ) : (
-                <div className="listing-grid">
+                <div className="listing-grid contacted-properties-grid">
                   {items.map((item) => (
-                    <article key={item.connectionId} className="listing-card">
+                    <article key={item.connectionId} className="listing-card contacted-properties-card">
                       <div className="listing-card-image">
                         <div className="listing-card-badges">
                           <div className="listing-card-badges-left">
@@ -85,7 +86,7 @@ export default function ContactedPropertiesPage() {
                         ) : (
                           <div className="listing-card-placeholder">
                             <Home size={66} />
-                            <span style={{ fontWeight: 700 }}>NO IMAGE YET</span>
+                            <span className="contacted-properties-no-image">NO IMAGE YET</span>
                           </div>
                         )}
                       </div>
@@ -103,7 +104,7 @@ export default function ContactedPropertiesPage() {
                           {item.colony}, {item.city}
                         </div>
 
-                        <div className="listing-card-meta" style={{ marginBottom: 16 }}>
+                        <div className="listing-card-meta">
                           <span className="listing-card-meta-item">
                             <span className="occupant-icon-group" aria-hidden="true">
                               {Array.from({ length: Math.min(Math.max(item.maxOccupants, 1), 4) }, (_, index) => (
@@ -122,8 +123,8 @@ export default function ContactedPropertiesPage() {
                           </span>
                         </div>
 
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                          <span style={{ color: item.listingActive ? "var(--green-500)" : "var(--slate-600)", fontWeight: 700 }}>
+                        <div className="contacted-properties-card-footer">
+                          <span className={`contacted-properties-card-status ${item.listingActive ? "contacted-properties-card-active" : "contacted-properties-card-inactive"}`}>
                             {item.listingActive ? "Listing active" : "Listing unavailable"}
                           </span>
                           <button className="btn btn-dark btn-sm" onClick={() => navigate(`/listings/${item.listingId}`)}>
