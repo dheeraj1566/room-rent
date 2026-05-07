@@ -6,6 +6,7 @@ import brandLogo from "../../assets/Roombaazi Final Logo.png";
 import SiteFooter from "../../components/SiteFooter";
 import { useAuth } from "../../context/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { isValidEmail } from "../../lib/validation";
 
 export default function Login() {
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
@@ -77,6 +78,11 @@ export default function Login() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!isValidEmail(email)) {
+      setErrorMsg("Enter a valid email address with a proper domain like gmail.com");
+      return;
+    }
+
     setLoading(true);
     setErrorMsg("");
     try {

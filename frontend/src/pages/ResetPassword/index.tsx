@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import "./ResetPassword.css";
 import { apiFetch } from "../../lib/api";
+import { isValidEmail } from "../../lib/validation";
 import brandLogo from "../../assets/Roombaazi Final Logo.png";
 
 export default function ResetPassword() {
@@ -26,6 +27,11 @@ export default function ResetPassword() {
     e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
+
+    if (!isValidEmail(email)) {
+      setErrorMsg("Enter a valid email address with a proper domain like gmail.com");
+      return;
+    }
 
     if (newPassword.length < 6) {
       setErrorMsg("Password must be at least 6 characters.");

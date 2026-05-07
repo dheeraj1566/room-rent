@@ -60,6 +60,8 @@
 
 .contacted-properties-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-color);
@@ -75,15 +77,28 @@
 }
 
 .contacted-properties-card .listing-card-image {
-  aspect-ratio: 1.42 / 1;
+  aspect-ratio: auto;
+  height: 220px;
+  flex-shrink: 0;
+}
+
+.contacted-properties-card .listing-card-image img {
+  display: block;
 }
 
 .contacted-properties-card .listing-card-content {
   padding: 14px 14px 12px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
 }
 
 .contacted-properties-card .listing-card-title {
   font-size: 0.96rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .contacted-properties-no-image {
@@ -104,6 +119,7 @@
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  margin-top: auto;
 }
 
 .contacted-properties-card-status {

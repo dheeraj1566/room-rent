@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { AlertTriangle, Info } from "lucide-react";
 import "./ForgotPassword.css";
 import { apiFetch } from "../../lib/api";
+import { isValidEmail } from "../../lib/validation";
 import brandLogo from "../../assets/Roombaazi Final Logo.png";
 import SiteFooter from "../../components/SiteFooter";
 
@@ -19,6 +20,12 @@ export default function ForgotPassword() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isValidEmail(email)) {
+      setMessage("");
+      setErrorMsg("Enter a valid email address with a proper domain like gmail.com");
+      return;
+    }
+
     setLoading(true);
     setMessage("");
     setErrorMsg("");

@@ -67,6 +67,8 @@ export const env = {
       ? process.env.AZURE_STORAGE_PUBLIC_BASE_URL
       : ""),
 
+  SERVER_URL: process.env.SERVER_URL || `http://localhost:${parseInt(process.env.PORT || "5000")}`,
+
   // Auth
   JWT_SECRET: process.env.JWT_SECRET || "default_development_secret_key_change_in_prod",
   

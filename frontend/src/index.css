@@ -1094,7 +1094,7 @@ select.select-style::-ms-expand {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 56px 24px 80px;
+  padding: 40px 24px 80px;
 }
 
 .hero-search {
@@ -2486,18 +2486,17 @@ select.select-style::-ms-expand {
     align-items: stretch;
   }
 
-  /* Hide desktop navigation on tablet and mobile */
+  /* Keep desktop navigation on wide tablets; hamburger starts at 900px. */
   .nav-desktop {
+    display: flex;
+  }
+
+  .mobile-menu-btn {
     display: none;
   }
 
-  /* Show mobile menu button */
-  .mobile-menu-btn {
-    display: flex;
-  }
-
   .mobile-actions {
-    display: flex;
+    display: none;
   }
 
   .mobile-notifications .notification-dropdown {
@@ -2531,8 +2530,8 @@ select.select-style::-ms-expand {
   }
 }
 
-/* Desktop Navigation - Show on larger screens */
-@media (min-width: 981px) {
+/* Desktop Navigation - Show above mobile breakpoint */
+@media (min-width: 901px) {
   .nav-desktop {
     display: flex;
   }
@@ -2580,8 +2579,26 @@ select.select-style::-ms-expand {
   display: block;
 }
 
+/* Navbar switches to mobile at tablet widths */
+@media (max-width: 900px) {
+  .nav-desktop {
+    display: none;
+  }
+
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-actions {
+    display: flex;
+  }
+}
+
 /* Tablet portrait — collapse sidebar to full width */
 @media (max-width: 780px) {
+
   .details-layout {
     grid-template-columns: 1fr;
   }

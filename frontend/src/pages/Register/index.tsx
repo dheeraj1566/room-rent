@@ -5,6 +5,7 @@ import "./Register.css";
 import brandLogo from "../../assets/Roombaazi Final Logo.png";
 import SiteFooter from "../../components/SiteFooter";
 import { apiFetch } from "../../lib/api";
+import { isValidEmail } from "../../lib/validation";
 
 export default function Register() {
   const [fullName, setFullName] = useState("");
@@ -45,7 +46,7 @@ export default function Register() {
     if (!phone.trim()) nextErrors.phone = "Phone number is required";
     else if (!/^[6-9]\d{9}$/.test(phone.trim())) nextErrors.phone = "Enter a valid 10-digit mobile number";
     if (!email.trim()) nextErrors.email = "Email address is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) nextErrors.email = "Enter a valid email address";
+    else if (!isValidEmail(email)) nextErrors.email = "Enter a valid email address with a proper domain like gmail.com";
     if (!password) nextErrors.password = "Password is required";
     else if (passwordRules.some((rule) => !rule.valid)) nextErrors.password = "Password is not secure and password must be Strong";
     if (!confirmPassword) nextErrors.confirmPassword = "Please confirm your password";

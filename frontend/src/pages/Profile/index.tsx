@@ -7,6 +7,7 @@ import { ApiError, apiFetch } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import Skeleton from "../../components/Skeleton";
+import { isValidEmail } from "../../lib/validation";
 import "./Profile.css";
 
 type Profile = {
@@ -89,6 +90,11 @@ export default function ProfilePage() {
     setSaving(true);
     setErrorMsg("");
     try {
+      if (form.email.trim() && !isValidEmail(form.email)) {
+        setErrorMsg("Enter a valid email address with a proper domain like gmail.com");
+        return;
+      }
+
       const changedFields: Partial<ProfilePayload> = {};
       (Object.keys(form) as (keyof ProfilePayload)[]).forEach((key) => {
         if (key === "aadhaar" && isAadhaarLocked) return;

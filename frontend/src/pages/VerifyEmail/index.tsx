@@ -5,6 +5,7 @@ import "./VerifyEmail.css";
 import brandLogo from "../../assets/Roombaazi Final Logo.png";
 import { apiFetch } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
+import { isValidEmail } from "../../lib/validation";
 
 type Status = "verifying" | "success" | "error";
 
@@ -46,6 +47,8 @@ export default function VerifyEmail() {
 
   const handleResend = async () => {
     if (!resendEmail.trim() || resendStatus === "sending") return;
+    if (!isValidEmail(resendEmail)) return;
+
     setResendStatus("sending");
     try {
       await apiFetch("/api/auth/resend-verification", {

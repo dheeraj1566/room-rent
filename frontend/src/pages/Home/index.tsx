@@ -14,6 +14,7 @@ import SiteFooter from "../../components/SiteFooter";
 import ListingCard from "../../components/ListingCard";
 import Skeleton from "../../components/Skeleton";
 import { apiFetch } from "../../lib/api";
+import { useAuth } from "../../context/AuthContext";
 import "./Home.css";
 
 type Listing = {
@@ -44,6 +45,7 @@ export default function Home() {
   const [featured, setFeatured] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     let active = true;
@@ -74,6 +76,10 @@ export default function Home() {
     navigate(`/browse?${params.toString()}`);
   };
 
+  const handleLogout = async () => {
+    await logout();
+  };
+
   return (
     <div className="app-shell">
       <main className="page-shell">
@@ -81,14 +87,22 @@ export default function Home() {
           <div className="page-container home-hero">
             <div>
               <div className="home-header-nav">
-                <img src={brandLogo} alt="Roombaazi" />
+                <img className="home-header-logo" src={brandLogo} alt="Roombaazi" />
                 <div className="home-header-actions">
-                  <Link to="/login" className="btn btn-outline">
-                    Login
-                  </Link>
-                  <Link to="/register" className="btn btn-dark">
-                    Register
-                  </Link>
+                  {user ? (
+                    <button type="button" className="btn btn-outline" onClick={() => void handleLogout()}>
+                      Logout
+                    </button>
+                  ) : (
+                    <>
+                      <Link to="/login" className="btn btn-outline">
+                        Login
+                      </Link>
+                      <Link to="/register" className="btn btn-dark">
+                        Register
+                      </Link>
+                    </>
+                  )}
                 </div>
               </div>
               <span className="badge badge-soft">

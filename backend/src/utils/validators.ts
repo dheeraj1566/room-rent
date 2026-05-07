@@ -36,8 +36,9 @@ export function isValidIndianPhone(phone: string): boolean {
  * Validate email format
  */
 export function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  const normalized = normalizeEmail(email);
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/;
+  return emailRegex.test(normalized);
 }
 
 /**

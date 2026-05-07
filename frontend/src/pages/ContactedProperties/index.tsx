@@ -74,7 +74,7 @@ export default function ContactedPropertiesPage() {
               ) : (
                 <div className="listing-grid contacted-properties-grid">
                   {items.map((item) => (
-                    <article key={item.connectionId} className="listing-card contacted-properties-card">
+                    <article key={item.connectionId} className="listing-card contacted-properties-card" onClick={() => navigate(`/listings/${item.listingId}`)} style={{ cursor: "pointer" }}>
                       <div className="listing-card-image">
                         <div className="listing-card-badges">
                           <div className="listing-card-badges-left">

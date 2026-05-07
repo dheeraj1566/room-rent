@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  Heart,
   Home,
   MapPin,
   Pencil,
@@ -157,6 +158,8 @@ export default function ListingDetailsPage() {
   const [myConnection, setMyConnection] = useState<ConnectionStatus>(null);
   const [connectingOwner, setConnectingOwner] = useState(false);
   const [cancellingRequest, setCancellingRequest] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favoriting, setFavoriting] = useState(false);
 
   const canEdit = Boolean(user && item && user.id === item.landlordId);
 
@@ -184,6 +187,19 @@ export default function ListingDetailsPage() {
       setMyConnection(data.connection);
     } catch {
       setMyConnection(null);
+    }
+  };
+
+  const loadFavoriteStatus = async (currentListingId: string) => {
+    if (!user) {
+      setIsFavorited(false);
+      return;
+    }
+    try {
+      const data = await apiFetch<{ ids: string[] }>("/api/favorites/ids", { method: "GET" });
+      setIsFavorited(Array.isArray(data.ids) && data.ids.includes(currentListingId));
+    } catch {
+      setIsFavorited(false);
     }
   };
 
@@ -274,6 +290,7 @@ export default function ListingDetailsPage() {
     if (!item) return;
     void loadTestimonials(item.landlordId);
     void loadMyReview(item.landlordId, item.listingId);
+    void loadFavoriteStatus(item.listingId);
     if (user && user.id !== item.landlordId) {
       void loadConnectionStatus(item.listingId);
     }
@@ -338,6 +355,25 @@ export default function ListingDetailsPage() {
       showToast(error instanceof Error ? error.message : "Failed to submit review", "error");
     } finally {
       setSubmittingReview(false);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!item) return;
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    setFavoriting(true);
+    try {
+      const data = await apiFetch<{ liked: boolean }>(`/api/favorites/${item.listingId}`, { method: "POST" });
+      setIsFavorited(Boolean(data.liked));
+      showToast(data.liked ? "Added to liked properties" : "Removed from liked properties", "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Failed to update liked status", "error");
+    } finally {
+      setFavoriting(false);
     }
   };
 
@@ -748,6 +784,17 @@ export default function ListingDetailsPage() {
                           </div>
                         )}
                       </div>
+                    ) : null}
+
+                    {!canEdit ? (
+                      <button
+                        className={`btn btn-outline btn-block listing-details-like-btn${isFavorited ? " is-active" : ""}`}
+                        onClick={() => void handleToggleFavorite()}
+                        disabled={favoriting}
+                      >
+                        <Heart size={16} fill={isFavorited ? "currentColor" : "none"} />
+                        {favoriting ? "Updating..." : isFavorited ? "Liked" : "Like Property"}
+                      </button>
                     ) : null}
 
                     <button className="btn btn-outline btn-block" onClick={() => navigate("/browse")}>

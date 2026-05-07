@@ -420,7 +420,19 @@ export default function Dashboard() {
                 <>
                   {items.length > 0 ? (
                     items.map((item) => (
-                      <article key={item.listingId} className="listing-card listing-card-wrapper dashboard-listing-card">
+                      <article
+                        key={item.listingId}
+                        className="listing-card listing-card-wrapper dashboard-listing-card"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => navigate(`/listings/${item.listingId}`)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            navigate(`/listings/${item.listingId}`);
+                          }
+                        }}
+                      >
                         <div className={`listing-card-image-wrapper dot-grid dashboard-listing-image-wrap${item.statusName !== "Active" ? " listing-card-image--dimmed" : ""}`}>
                           <div className="listing-card-badges">
                             <div className="listing-card-badges-left">
@@ -466,19 +478,31 @@ export default function Dashboard() {
                             <button
                               className="btn btn-outline btn-sm dashboard-listing-action-fixed"
                               title={item.statusName === "Active" ? "Hide listing" : "Show listing"}
-                              onClick={() => void handleToggleStatus(item.listingId)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void handleToggleStatus(item.listingId);
+                              }}
                               disabled={togglingStatusId === item.listingId}
                             >
                               {item.statusName === "Active" ? <EyeOff size={15} /> : <Eye size={15} />}
                               {togglingStatusId === item.listingId ? "..." : item.statusName === "Active" ? "Hide" : "Show"}
                             </button>
-                            <button className="btn btn-dark btn-sm dashboard-listing-action-edit" onClick={() => navigate(`/listings/${item.listingId}`)}>
+                            <button
+                              className="btn btn-dark btn-sm dashboard-listing-action-edit"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                navigate(`/listings/${item.listingId}`);
+                              }}
+                            >
                               <Pencil size={15} />
                               Edit
                             </button>
                             <button
                               className="btn btn-outline btn-sm dashboard-listing-delete-btn"
-                              onClick={() => void handleDelete(item.listingId)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void handleDelete(item.listingId);
+                              }}
                               disabled={deletingId === item.listingId}
                             >
                               <Trash2 size={15} />

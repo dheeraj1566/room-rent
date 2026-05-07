@@ -4,12 +4,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 26px;
+  margin-bottom: 3rem;
+  
 }
 
-.home-header-nav img {
-  height: 48px;
+.home-header-logo {
   width: auto;
+  height: 44px;
+  max-width: 200px;
 }
 
 .home-header-actions {
@@ -92,6 +94,10 @@
   color: white;
   border-color: rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.12);
+}
+
+.home-cta-secondary:hover:not(:disabled) {
+  color: #000;
 }
 
 /* Responsive Design */

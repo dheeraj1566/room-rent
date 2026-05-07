@@ -84,7 +84,7 @@ export default function Navbar() {
     };
 
     const handleResize = () => {
-      if (window.innerWidth > 980 && isMobileMenuOpen) {
+      if (window.innerWidth > 900 && isMobileMenuOpen) {
         closeMobileMenu();
       }
     };
@@ -198,7 +198,7 @@ export default function Navbar() {
           <div className="nav-actions nav-desktop">
             {isAuthenticated ? (
               <>
-                <Link to="/post-property" className="btn btn-primary btn-sm">
+                <Link to="/post-property" className="btn btn-primary btn-sm nav-post-property-btn">
                   <Plus size={18} />
                   Post Property
                   <span className="btn-free-tag">FREE</span>

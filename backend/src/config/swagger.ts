@@ -1,6 +1,6 @@
 ﻿import env from "./env";
 
-const apiBaseUrl = `http://localhost:${env.PORT}/api`;
+const apiBaseUrl = `${env.SERVER_URL}/api`;
 
 export const swaggerSpec = {
   openapi: "3.0.3",

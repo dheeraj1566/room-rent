@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError, simpleApi } from "../../lib/simpleApi";
+import { isValidEmail } from "../../lib/validation";
 
 interface AdminLoginResponse {
   user: {
@@ -18,6 +19,11 @@ const AdminLogin: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!isValidEmail(email)) {
+      setError("Enter a valid email address with a proper domain like gmail.com");
+      return;
+    }
+
     try {
       const res = await simpleApi.post<AdminLoginResponse>("/auth/login", { email, password });
       if (res.user.role !== "admin") {

@@ -4,6 +4,7 @@ import nodemailer from "nodemailer";
 import User from "../models/User.js";
 import { CryptoService } from "../services/crypto.service.js";
 import env from "../config/env.js";
+import { isValidEmail } from "../utils/validators.js";
 
 const mailer = nodemailer.createTransport({
   host: env.SMTP_HOST,
@@ -217,6 +218,11 @@ const saveProfile = async (
   // Email
   const email = normalizeEmail(trimStringOrNull(payload.email));
   if (hasOwn(payload as object, "email") && email !== null) {
+    if (!isValidEmail(email)) {
+      ErrorResponses.badRequest(res, "Valid email is required");
+      return { emailSent: false };
+    }
+
     const existingEmail = normalizeEmail(user.email ?? null);
     const emailChanged = email !== existingEmail;
 
