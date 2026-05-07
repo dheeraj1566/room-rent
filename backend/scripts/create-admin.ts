@@ -1,7 +1,7 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
-import User from "../src/models/User.ts";
+import User from "../src/models/User";
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "admin@example.com").trim().toLowerCase();
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Admin@123";

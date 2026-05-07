@@ -618,8 +618,8 @@ export class ListingsService {
 
       if (normalizedGenders.length > 0) {
         filteredListings = listings.filter((listing) => {
-          const rf = (listing.roomFor ?? "").toLowerCase();
-          return rf === "any" || normalizedGenders.includes(rf);
+          const rf = (listing.roomFor ?? "any").toLowerCase();
+          return rf === "any" || normalizedGenders.includes(rf as "male" | "female" | "any");
         });
       }
     }
