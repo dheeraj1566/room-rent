@@ -9,7 +9,7 @@ import type { Response } from "express";
  */
 export function isDuplicateKeyError(error: any): { field: string } | null {
   if (error?.code === 11000 && error?.keyPattern) {
-    const field = Object.keys(error.keyPattern)[0];
+    const field = Object.keys(error.keyPattern)[0] ?? "unknown";
     return { field };
   }
   return null;
@@ -21,21 +21,16 @@ export function isDuplicateKeyError(error: any): { field: string } | null {
 export const ErrorResponses = {
   unauthorized: (res: Response) => 
     res.status(401).json({ error: "Unauthorized" }),
-    
-  badRequest: (res: Response, message: string = "Bad request") => 
-    res.status(400).json({ error: message }),
-    
-  notFound: (res: Response, message: string = "Not found") => 
-    res.status(404).json({ error: message }),
-    
-  conflict: (res: Response, message: string = "Conflict") => 
-    res.status(409).json({ error: message }),
-    
-  forbidden: (res: Response, message: string = "Forbidden") => 
-    res.status(403).json({ error: message }),
-    
-  internal: (res: Response, message: string = "Internal server error") => 
-    res.status(500).json({ error: message }),
+  badRequest: (res: Response, message?: string) => 
+    res.status(400).json({ error: message ?? "Bad request" }),
+  notFound: (res: Response, message?: string) => 
+    res.status(404).json({ error: message ?? "Not found" }),
+  conflict: (res: Response, message?: string) => 
+    res.status(409).json({ error: message ?? "Conflict" }),
+  forbidden: (res: Response, message?: string) => 
+    res.status(403).json({ error: message ?? "Forbidden" }),
+  internal: (res: Response, message?: string) => 
+    res.status(500).json({ error: message ?? "Internal server error" }),
 
   // Specific auth errors
   invalidCredentials: (res: Response) => 

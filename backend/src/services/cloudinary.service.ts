@@ -1,4 +1,5 @@
 import env from "../config/env.js";
+// cloudinary provides its own types, no need for @types/cloudinary
 
 // Lazy-load Cloudinary to avoid startup crash when package is missing
 export class CloudinaryService {
