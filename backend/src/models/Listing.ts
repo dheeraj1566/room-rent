@@ -19,6 +19,7 @@ export interface IListing extends Document {
   landlordId: mongoose.Types.ObjectId;
   title: string;
   description?: string;
+  roomCategory?: "Single" | "Shared" | "Unshared";
   floorLevel: string;
   furnishingType: string;
   maxOccupants: number;
@@ -79,6 +80,7 @@ const listingSchema = new Schema<IListing>(
     },
     title: { type: String, required: true, trim: true },
     description: { type: String, trim: true },
+    roomCategory: { type: String, enum: ["Single", "Shared", "Unshared"] },
     floorLevel: { type: String, required: true },
     furnishingType: { type: String, required: true },
     maxOccupants: { type: Number, required: true, min: 1, max: 4 },

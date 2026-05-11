@@ -36,10 +36,18 @@ type RoomForm = {
   roomImagePreviews: string[];
 };
 
+type RoomCategory = "Single" | "Shared" | "Unshared";
+
 const PROPERTY_TYPE_OPTIONS = [
   { value: "1", label: "PG" },
   { value: "2", label: "Individual" },
   { value: "3", label: "Flat" },
+];
+
+const ROOM_CATEGORY_OPTIONS = [
+  { value: "1", label: "Single" },
+  { value: "2", label: "Shared" },
+  { value: "3", label: "Unshared" },
 ];
 
 const FLOOR_LEVEL_OPTIONS = [
@@ -128,6 +136,7 @@ export default function AddListing() {
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
   const [propertyTypeId, setPropertyTypeId] = useState<number | "">("");
+  const [roomCategoryId, setRoomCategoryId] = useState<number | "">("");
   const [floorLevelId, setFloorLevelId] = useState<number | "">("");
   const [rooms, setRooms] = useState<RoomForm[]>([createRoom()]);
   const [exteriorFile, setExteriorFile] = useState<File | null>(null);
@@ -178,28 +187,87 @@ export default function AddListing() {
       .join(", ");
   }, [area, colony, houseNo, landmark, pincode]);
 
+  const roomCategoryName = useMemo<RoomCategory | null>(() => {
+    if (roomCategoryId === 1) return "Single";
+    if (roomCategoryId === 2) return "Shared";
+    if (roomCategoryId === 3) return "Unshared";
+    return null;
+  }, [roomCategoryId]);
+
+  const isSingleCategory = roomCategoryName === "Single";
+  const isSharedCategory = roomCategoryName === "Shared";
+  const isUnsharedCategory = roomCategoryName === "Unshared";
+
+  const applyCategoryDefaults = (category: RoomCategory, room: RoomForm): RoomForm => {
+    if (category === "Single") {
+      const singleTierRent = room.rentTiers.find((tier) => tier.occupants === 1)?.rent ?? room.monthlyRent;
+
+      return {
+        ...room,
+        maxOccupants: 1,
+        monthlyRent: singleTierRent === "" ? "" : Number(singleTierRent),
+        rentTiers: [{ occupants: 1, rent: singleTierRent === "" ? "" : Number(singleTierRent) }],
+        bedType: "Single",
+        singleBedCount: 1,
+        doubleBedCount: "",
+      };
+    }
+
+    if (category === "Unshared") {
+      return {
+        ...room,
+        rentTiers:
+          room.maxOccupants && Number(room.maxOccupants) > 0
+            ? [
+                {
+                  occupants: Number(room.maxOccupants),
+                  rent:
+                    room.rentTiers.find((tier) => tier.occupants === Number(room.maxOccupants))?.rent ?? room.monthlyRent,
+                },
+              ]
+            : [],
+      };
+    }
+
+    return room;
+  };
+
   const updateRoom = (roomId: string, patch: Partial<RoomForm>) => {
     setRooms((prev) => prev.map((room) => {
       if (room.id !== roomId) return room;
       
-      const updated = { ...room, ...patch };
+      let updated = { ...room, ...patch };
       
       // Generate rent tiers when max occupants changes
-      if (patch.maxOccupants !== undefined) {
+      if (patch.maxOccupants !== undefined && roomCategoryName !== null && roomCategoryName !== "Single") {
         const maxOccupants = Number(updated.maxOccupants);
         if (maxOccupants > 0) {
-          const newTiers: { occupants: number; rent: number | "" }[] = [];
-          for (let i = 1; i <= maxOccupants; i++) {
-            const existingTier = room.rentTiers.find(tier => tier.occupants === i);
-            newTiers.push({
-              occupants: i,
-              rent: existingTier?.rent || ""
-            });
+          if (roomCategoryName === "Shared") {
+            const newTiers: { occupants: number; rent: number | "" }[] = [];
+            for (let i = 1; i <= maxOccupants; i++) {
+              const existingTier = room.rentTiers.find((tier) => tier.occupants === i);
+              newTiers.push({
+                occupants: i,
+                rent: existingTier?.rent || "",
+              });
+            }
+            updated.rentTiers = newTiers;
+          } else {
+            const existingTier = room.rentTiers.find((tier) => tier.occupants === maxOccupants);
+            updated.rentTiers = [
+              {
+                occupants: maxOccupants,
+                rent: existingTier?.rent ?? updated.monthlyRent,
+              },
+            ];
           }
-          updated.rentTiers = newTiers;
         } else {
           updated.rentTiers = [];
         }
+      }
+
+      if (roomCategoryName) {
+        updated = applyCategoryDefaults(roomCategoryName, updated);
       }
       
       return updated;
@@ -260,6 +328,7 @@ export default function AddListing() {
 
   const validateRooms = () => {
     if (propertyTypeId === "") return "Please select a Property Type.";
+    if (roomCategoryId === "") return "Please select a Room Category.";
     if (floorLevelId === "") return "Please select a Floor Level.";
 
     const isPG = Number(propertyTypeId) === 1;
@@ -269,6 +338,9 @@ export default function AddListing() {
 
     for (const room of rooms) {
       const maxOccupants = Number(room.maxOccupants);
+      const isSingleRoom = roomCategoryName === "Single";
+      const isSharedRoom = roomCategoryName === "Shared";
+      const isUnsharedRoom = roomCategoryName === "Unshared";
       
       // Check if rent for max occupants is set
       const maxOccupantsRent = room.rentTiers.find(tier => tier.occupants === maxOccupants)?.rent;
@@ -288,6 +360,18 @@ export default function AddListing() {
         !room.availableFrom
       ) {
         return "Please complete all room details before publishing.";
+      }
+      if (isSingleRoom && maxOccupants !== 1) {
+        return "Single category rooms must allow exactly 1 occupant.";
+      }
+      if ((isSharedRoom || isUnsharedRoom) && maxOccupants < 2) {
+        return `${roomCategoryName} rooms must allow at least 2 occupants.`;
+      }
+      if (isSharedRoom && room.rentTiers.length !== maxOccupants) {
+        return "Please add rent for each shared occupancy option.";
+      }
+      if (isUnsharedRoom && room.rentTiers.length > 1) {
+        return "Unshared rooms should use one monthly room rent.";
       }
       if (!room.roomImages.some(Boolean)) {
         return "Each room needs at least one image.";
@@ -354,6 +438,7 @@ export default function AddListing() {
                 doubleBedCount: Number(room.maxOccupants) > 1 ? 1 : 0,
               }),
           propertyTypeId: Number(propertyTypeId),
+          roomCategoryId: Number(roomCategoryId),
           floorLevelId: Number(floorLevelId),
           maxOccupants: Number(room.maxOccupants),
           monthlyRent: Number(room.monthlyRent),
@@ -525,6 +610,25 @@ export default function AddListing() {
                       />
                     </div>
                     <div className="field">
+                      <label>Room Category *</label>
+                      <Select
+                        value={roomCategoryId === "" ? "" : String(roomCategoryId)}
+                        onChange={(next) => {
+                          const categoryId = next ? Number(next) : "";
+                          setRoomCategoryId(categoryId);
+                          if (!next) return;
+
+                          const categoryName: RoomCategory =
+                            categoryId === 1 ? "Single" : categoryId === 2 ? "Shared" : "Unshared";
+                          setRooms((prev) => prev.map((room) => applyCategoryDefaults(categoryName, room)));
+                        }}
+                        options={ROOM_CATEGORY_OPTIONS}
+                        placeholder="Select room category"
+                        aria-label="Room category"
+                        className={step2Submitted && roomCategoryId === "" ? "input-error" : ""}
+                      />
+                    </div>
+                    <div className="field">
                       <label>Floor Level *</label>
                       <Select
                         value={floorLevelId === "" ? "" : String(floorLevelId)}
@@ -580,19 +684,22 @@ export default function AddListing() {
                           <>
                       <div className="field">
                         <label>Max Occupants *</label>
-                        <Select
-                          value={room.maxOccupants === "" ? "" : String(room.maxOccupants)}
-                          onChange={(next) => updateRoom(room.id, { maxOccupants: next ? Number(next) : "" })}
-                          options={MAX_OCCUPANTS_OPTIONS}
-                          placeholder="Select max occupants"
-                          aria-label="Max occupants"
-                          className={step2Submitted && room.maxOccupants === "" ? "input-error" : ""}
-                        />
+                        {isSingleCategory ? (
+                          <input className="input-style" value="1 occupant" disabled />
+                        ) : (
+                          <Select
+                            value={room.maxOccupants === "" ? "" : String(room.maxOccupants)}
+                            onChange={(next) => updateRoom(room.id, { maxOccupants: next ? Number(next) : "" })}
+                            options={MAX_OCCUPANTS_OPTIONS.filter((option) => option.value !== "1")}
+                            placeholder="Select max occupants"
+                            aria-label="Max occupants"
+                            className={step2Submitted && room.maxOccupants === "" ? "input-error" : ""}
+                          />
+                        )}
                       </div>
 
-                      {/* Monthly Rent Field - Always Visible */}
                       <div className="field">
-                        <label>Monthly Rent (₹) * {room.maxOccupants && Number(room.maxOccupants) > 0 ? <span className="add-listing-occupant-hint">for {room.maxOccupants} occupants</span> : null}</label>
+                        <label>{isSharedCategory ? "Rent for Full Shared Occupancy (₹) *" : "Monthly Rent (₹) *"} {room.maxOccupants && Number(room.maxOccupants) > 0 ? <span className="add-listing-occupant-hint">for {room.maxOccupants} occupants</span> : null}</label>
                         <input
                           className={`input-style${step2Submitted && !(room.rentTiers.find(t => t.occupants === Number(room.maxOccupants))?.rent) ? " input-error" : ""}`}
                           value={room.maxOccupants && Number(room.maxOccupants) > 0 ? (room.rentTiers.find(tier => tier.occupants === Number(room.maxOccupants))?.rent || "") : room.monthlyRent}
@@ -608,9 +715,9 @@ export default function AddListing() {
                         />
                       </div>
 
-                      {/* Dynamic Rent Tiers for Lower Occupancy */}
-                      {room.maxOccupants && Number(room.maxOccupants) > 1 ? (
+                      {isSharedCategory && room.maxOccupants && Number(room.maxOccupants) > 1 ? (
                         <div className="add-listing-field-fullwidth">
+                          <span className="field-note">Add different rent for each shared seating combination.</span>
                           <div className="field-grid-2 add-listing-field-grid">
                             {Array.from({ length: Number(room.maxOccupants) - 1 }, (_, index) => {
                               const occupants = Number(room.maxOccupants) - 1 - index;
@@ -657,7 +764,7 @@ export default function AddListing() {
                         </div>
                       ) : null}
 
-                      {needsAdvanced ? (
+                      {needsAdvanced && !isSingleCategory ? (
                         <div className="field">
                           <label>Bed Type *</label>
                           <Select
@@ -675,7 +782,7 @@ export default function AddListing() {
                         </div>
                       ) : null}
 
-                      {needsAdvanced && (room.bedType === "Single" || room.bedType === "Mixed") ? (
+                      {needsAdvanced && !isSingleCategory && (room.bedType === "Single" || room.bedType === "Mixed") ? (
                         <div className="field">
                           <label>Single Bed Count *</label>
                           <input
@@ -689,7 +796,7 @@ export default function AddListing() {
                         </div>
                       ) : null}
 
-                      {needsAdvanced && (room.bedType === "Double" || room.bedType === "Mixed") ? (
+                      {needsAdvanced && !isSingleCategory && (room.bedType === "Double" || room.bedType === "Mixed") ? (
                         <div className="field">
                           <label>Double Bed Count *</label>
                           <input
@@ -837,7 +944,13 @@ export default function AddListing() {
                           className="textarea-style"
                           value={room.description}
                           onChange={(e) => updateRoom(room.id, { description: e.target.value })}
-                          placeholder="Add highlights of this property"
+                          placeholder={
+                            isSharedCategory
+                              ? "Add shared room highlights like seats, washroom access, and common facilities"
+                              : isUnsharedCategory
+                                ? "Add full-room highlights for groups or friends renting together"
+                                : "Add highlights of this single-occupancy room"
+                          }
                         />
                       </div>
 

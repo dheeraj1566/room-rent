@@ -11,6 +11,7 @@ type ListingCardProps = {
   monthlyRent: number;
   rentTiers: { occupants: number; rent: number }[];
   maxOccupants: number;
+  roomCategoryName?: string | null;
   landlordGender: string | null;
   roomFor: string | null;
   propertyTypeId: number | null;
@@ -46,6 +47,7 @@ export default function ListingCard({
   city,
   monthlyRent,
   maxOccupants,
+  roomCategoryName,
   propertyTypeId,
   furnishingName,
   roomFor,
@@ -57,6 +59,7 @@ export default function ListingCard({
   const navigate = useNavigate();
   const [imageError, setImageError] = useState(false);
   const propertyLabel = propertyTypeId ? propertyTypeMap[propertyTypeId] ?? "Property" : "Property";
+  const categoryLabel = roomCategoryName ? `${roomCategoryName} Room` : null;
   const relativeTime = useMemo(() => formatRelativeTime(createdAt), [createdAt]);
   const titleAccent = /studio/i.test(title) || /mansarovar/i.test(title);
   const occupantIcons = Math.min(Math.max(maxOccupants, 1), 4);
@@ -80,6 +83,11 @@ export default function ListingCard({
             <span className="badge badge-dark listing-card-badge">
               {propertyLabel}
             </span>
+            {categoryLabel ? (
+              <span className="badge badge-soft listing-card-badge">
+                {categoryLabel}
+              </span>
+            ) : null}
             <span className="badge badge-verified listing-card-badge">
               Verified
             </span>

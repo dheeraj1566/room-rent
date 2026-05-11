@@ -6,6 +6,7 @@ type FilterState = {
   minRent: number;
   maxRent: number;
   maxOccupants: number[];
+  roomCategoryId: number[];
   furnishingTypeId: number[];
   foodPreferenceId: number[];
   coolingTypeId: number[];
@@ -48,6 +49,11 @@ const coolingOptions = [
 ];
 
 const roomForOptions: ("Male" | "Female" | "Other")[] = ["Male", "Female", "Other"];
+const roomCategoryOptions = [
+  { id: 1, name: "Single" },
+  { id: 2, name: "Shared" },
+  { id: 3, name: "Unshared" },
+];
 
 export default function FilterSidebar({
   filters,
@@ -140,6 +146,27 @@ export default function FilterSidebar({
             >
               <span>{option.label}</span>
             </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="filter-section">
+        <span className="filter-label">Room Category</span>
+        <div className="checkbox-stack">
+          {roomCategoryOptions.map((item) => (
+            <label key={item.id} className="checkbox-item">
+              <input
+                type="checkbox"
+                checked={draft.roomCategoryId.includes(item.id)}
+                onChange={() =>
+                  setDraft((prev) => ({
+                    ...prev,
+                    roomCategoryId: toggleExclusive(prev.roomCategoryId, item.id),
+                  }))
+                }
+              />
+              <span>{item.name}</span>
+            </label>
           ))}
         </div>
       </div>

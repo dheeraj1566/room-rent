@@ -37,6 +37,8 @@ type ListingDetails = {
   landlordName: string;
   title: string;
   description: string | null;
+  roomCategoryId: number;
+  roomCategoryName: string;
   floorLevelId: number;
   floorName: string;
   furnishingTypeId: number;
@@ -400,6 +402,7 @@ export default function ListingDetailsPage() {
             description: editForm.description,
             securityDeposit: editForm.securityDeposit,
             propertyTypeId: item.propertyTypeId ?? undefined,
+            roomCategoryId: item.roomCategoryId ?? undefined,
             foodLevelId: item.foodLevelId ?? undefined,
             bedType: item.bedType ? (item.bedType as "Single" | "Double" | "Mixed") : undefined,
             singleBedCount: item.singleBedCount ?? undefined,
@@ -441,6 +444,7 @@ export default function ListingDetailsPage() {
   const detailItems = item
     ? [
         { label: "Property Type", value: item.propertyTypeId ? propertyTypeMap[item.propertyTypeId] || "N/A" : "N/A", icon: <Home size={16} /> },
+        { label: "Room Category", value: item.roomCategoryName, icon: <Users size={16} /> },
         { label: "Floor", value: item.floorName, icon: <Home size={16} /> },
         { label: "Furnishing", value: item.furnishingName, icon: <Sofa size={16} /> },
         { label: "Max Occupants", value: `${item.maxOccupants} ${item.maxOccupants === 1 ? "Person" : "People"}`, icon: <Users size={16} /> },
@@ -558,6 +562,10 @@ export default function ListingDetailsPage() {
                       <span className="listing-card-meta-item">
                         <BadgeIndianRupee size={16} />
                         ₹{item.monthlyRent.toLocaleString("en-IN")}/month
+                      </span>
+                      <span className="listing-card-meta-item">
+                        <Users size={16} />
+                        {item.roomCategoryName} room
                       </span>
                       <span className="listing-card-meta-item">
                         <Users size={16} />
@@ -721,7 +729,11 @@ export default function ListingDetailsPage() {
                         <span className="listing-details-sidebar-price-unit">/month</span>
                       </div>
                       <p className="listing-details-sidebar-occupants">
-                        For {item.maxOccupants} occupant{item.maxOccupants > 1 ? "s" : ""}
+                        {item.roomCategoryName === "Shared"
+                          ? `Shared room for up to ${item.maxOccupants} occupants`
+                          : item.roomCategoryName === "Unshared"
+                            ? `Entire room for up to ${item.maxOccupants} occupants`
+                            : "Single occupancy room"}
                       </p>
 
                       {Array.isArray(item.rentTiers) && item.rentTiers.length > 0 ? (

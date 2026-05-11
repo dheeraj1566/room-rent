@@ -9,6 +9,7 @@ import {
   PROPERTY_TYPES,
   COOLING_TYPES,
   PROJECT_STATUS_TYPES,
+  ROOM_CATEGORIES,
   LISTING_STATUSES_BY_NAME,
   FLOOR_LEVELS_BY_NAME,
   FURNISHING_TYPES_BY_NAME,
@@ -16,6 +17,7 @@ import {
   PROPERTY_TYPES_BY_NAME,
   COOLING_TYPES_BY_NAME,
   PROJECT_STATUS_TYPES_BY_NAME,
+  ROOM_CATEGORIES_BY_NAME,
   resolveLookup,
 } from "../constants/lookups.js";
 
@@ -26,13 +28,14 @@ export interface CreateListingDto {
     maxOccupants: number;
     foodPreferenceId: number;
     allowSmoking: boolean;
-    monthlyRent: number;
+    monthlyRent?: number;
     furnishingTypeId: number;
     coolingTypeId?: number;
     availableFrom: string;
     description?: string;
     securityDeposit?: number | null;
     propertyTypeId?: number;
+    roomCategoryId?: number;
     foodLevelId?: number;
     bedType?: "Single" | "Double" | "Mixed";
     singleBedCount?: number;
@@ -70,6 +73,8 @@ export interface ListingItem {
   city: string;
   monthlyRent: number;
   rentTiers: RentTierItem[];
+  roomCategoryId: number;
+  roomCategoryName: string;
   floorLevelId: number;
   furnishingTypeId: number;
   maxOccupants: number;
@@ -105,6 +110,8 @@ export interface ListingDetailsItem {
   landlordId: string;
   title: string;
   description: string | null;
+  roomCategoryId: number;
+  roomCategoryName: string;
   floorLevelId: number;
   floorName: string;
   furnishingTypeId: number;
@@ -148,6 +155,7 @@ export interface ListingFilters {
   minRent?: number;
   maxRent?: number;
   maxOccupants?: number[];
+  roomCategoryId?: number[];
   floorLevelId?: number[];
   furnishingTypeId?: number[];
   foodPreferenceId?: number[];
@@ -166,6 +174,50 @@ export interface LocationOption {
 }
 
 export class ListingsService {
+  private static inferRoomCategory(
+    roomCategory: string | undefined | null,
+    maxOccupants: number,
+    rentTiers?: { occupants: number; rent: number }[]
+  ): "Single" | "Shared" | "Unshared" {
+    const resolvedCategory = resolveLookup(ROOM_CATEGORIES, roomCategory ?? undefined);
+    if (resolvedCategory === "Single" || resolvedCategory === "Shared" || resolvedCategory === "Unshared") {
+      return resolvedCategory;
+    }
+
+    if (maxOccupants <= 1) return "Single";
+    if (Array.isArray(rentTiers) && rentTiers.length > 1) return "Shared";
+    return "Unshared";
+  }
+
+  private static normalizeRentTiers(rentTiers?: { occupants: number; rent: number }[]): IRentTier[] | undefined {
+    if (!Array.isArray(rentTiers) || rentTiers.length === 0) return undefined;
+
+    const normalized = rentTiers
+      .filter((tier) => Number.isFinite(tier.occupants) && tier.occupants > 0 && Number.isFinite(tier.rent) && tier.rent >= 0)
+      .map((tier) => ({
+        occupants: Math.trunc(tier.occupants),
+        rent: Math.trunc(tier.rent),
+      }))
+      .sort((a, b) => a.occupants - b.occupants);
+
+    return normalized.length > 0 ? normalized : undefined;
+  }
+
+  private static resolveMonthlyRent(
+    monthlyRent: number | undefined,
+    maxOccupants: number,
+    roomCategory: "Single" | "Shared" | "Unshared",
+    rentTiers?: IRentTier[]
+  ): number {
+    if (Number.isFinite(monthlyRent)) return Number(monthlyRent);
+
+    if (roomCategory === "Shared" && Array.isArray(rentTiers) && rentTiers.length > 0) {
+      return rentTiers.find((tier) => tier.occupants === maxOccupants)?.rent ?? rentTiers[rentTiers.length - 1]!.rent;
+    }
+
+    return 0;
+  }
+
   private static findCoverPhoto(photos: IListingPhoto[]): IListingPhoto | null {
     if (!photos || photos.length === 0) return null;
     return photos.find((p) => p.photoType === "Room") || photos[0] || null;
@@ -255,6 +307,18 @@ export class ListingsService {
   // ─── Create Single Listing ────────────────────────────────
   static async createSingleListing(data: CreateListingDto): Promise<string> {
     const title = this.generateTitle(data.location.colony, data.roomDetails.furnishingTypeId);
+    const rentTiers = this.normalizeRentTiers(data.roomDetails.rentTiers);
+    const roomCategory = this.inferRoomCategory(
+      resolveLookup(ROOM_CATEGORIES, data.roomDetails.roomCategoryId) ?? undefined,
+      data.roomDetails.maxOccupants,
+      rentTiers
+    );
+    const monthlyRent = this.resolveMonthlyRent(
+      data.roomDetails.monthlyRent,
+      data.roomDetails.maxOccupants,
+      roomCategory,
+      rentTiers
+    );
 
     // Build photos array
     const photos: IListingPhoto[] = [];
@@ -278,6 +342,7 @@ export class ListingsService {
       landlordId: data.landlordId,
       title,
       description: data.roomDetails.description ?? undefined,
+      roomCategory,
       floorLevel: resolveLookup(FLOOR_LEVELS, data.roomDetails.floorLevelId) ?? "Ground Floor",
       furnishingType: resolveLookup(FURNISHING_TYPES, data.roomDetails.furnishingTypeId) ?? "Unfurnished",
       maxOccupants: data.roomDetails.maxOccupants,
@@ -293,10 +358,8 @@ export class ListingsService {
       bedType: data.roomDetails.bedType ?? undefined,
       singleBedCount: data.roomDetails.singleBedCount ?? undefined,
       doubleBedCount: data.roomDetails.doubleBedCount ?? undefined,
-      monthlyRent: data.roomDetails.monthlyRent,
-      rentTiers: Array.isArray(data.roomDetails.rentTiers) && data.roomDetails.rentTiers.length > 0
-        ? data.roomDetails.rentTiers
-        : undefined,
+      monthlyRent,
+      rentTiers,
       securityDeposit: data.roomDetails.securityDeposit ?? undefined,
       roomFor: data.roomDetails.roomFor ?? undefined,
       availableFrom: new Date(data.roomDetails.availableFrom),
@@ -352,11 +415,19 @@ export class ListingsService {
     for (const room of roomsData) {
       if (!room) continue;
       const title = this.generateTitle(location.colony, room.furnishingTypeId);
+      const rentTiers = this.normalizeRentTiers(room.rentTiers);
+      const roomCategory = this.inferRoomCategory(
+        resolveLookup(ROOM_CATEGORIES, room.roomCategoryId) ?? undefined,
+        room.maxOccupants,
+        rentTiers
+      );
+      const monthlyRent = this.resolveMonthlyRent(room.monthlyRent, room.maxOccupants, roomCategory, rentTiers);
 
       const listing = await Listing.create({
         landlordId,
         title,
         description: room.description ?? undefined,
+        roomCategory,
         floorLevel: resolveLookup(FLOOR_LEVELS, room.floorLevelId) ?? "Ground Floor",
         furnishingType: resolveLookup(FURNISHING_TYPES, room.furnishingTypeId) ?? "Unfurnished",
         maxOccupants: room.maxOccupants,
@@ -372,7 +443,8 @@ export class ListingsService {
         bedType: room.bedType ?? undefined,
         singleBedCount: room.singleBedCount ?? undefined,
         doubleBedCount: room.doubleBedCount ?? undefined,
-        monthlyRent: room.monthlyRent,
+        monthlyRent,
+        rentTiers,
         securityDeposit: room.securityDeposit ?? undefined,
         availableFrom: new Date(room.availableFrom),
         addressLine: location.addressLine,
@@ -400,10 +472,23 @@ export class ListingsService {
       data.location.colony,
       data.roomDetails.furnishingTypeId
     );
+    const rentTiers = this.normalizeRentTiers(data.roomDetails.rentTiers);
+    const roomCategory = this.inferRoomCategory(
+      resolveLookup(ROOM_CATEGORIES, data.roomDetails.roomCategoryId) ?? undefined,
+      data.roomDetails.maxOccupants,
+      rentTiers
+    );
+    const monthlyRent = this.resolveMonthlyRent(
+      data.roomDetails.monthlyRent,
+      data.roomDetails.maxOccupants,
+      roomCategory,
+      rentTiers
+    );
 
     const updateFields: Record<string, unknown> = {
       title,
       description: data.roomDetails.description ?? null,
+      roomCategory,
       floorLevel: resolveLookup(FLOOR_LEVELS, data.roomDetails.floorLevelId) ?? "Ground Floor",
       furnishingType: resolveLookup(FURNISHING_TYPES, data.roomDetails.furnishingTypeId) ?? "Unfurnished",
       maxOccupants: data.roomDetails.maxOccupants,
@@ -419,10 +504,8 @@ export class ListingsService {
       bedType: data.roomDetails.bedType ?? null,
       singleBedCount: data.roomDetails.singleBedCount ?? null,
       doubleBedCount: data.roomDetails.doubleBedCount ?? null,
-      monthlyRent: data.roomDetails.monthlyRent,
-      rentTiers: Array.isArray(data.roomDetails.rentTiers) && data.roomDetails.rentTiers.length > 0
-        ? data.roomDetails.rentTiers
-        : [],
+      monthlyRent,
+      rentTiers: rentTiers ?? [],
       securityDeposit: data.roomDetails.securityDeposit ?? null,
       availableFrom: new Date(data.roomDetails.availableFrom),
       addressLine: data.location.addressLine,
@@ -543,6 +626,13 @@ export class ListingsService {
       query.maxOccupants = { $in: filters.maxOccupants };
     }
 
+    if (filters.roomCategoryId && filters.roomCategoryId.length > 0) {
+      const roomCategories = filters.roomCategoryId
+        .map((id) => resolveLookup(ROOM_CATEGORIES, id))
+        .filter(Boolean);
+      if (roomCategories.length > 0) query.roomCategory = { $in: roomCategories };
+    }
+
     if (filters.floorLevelId && filters.floorLevelId.length > 0) {
       const floorNames = filters.floorLevelId
         .map((id) => resolveLookup(FLOOR_LEVELS, id))
@@ -627,6 +717,11 @@ export class ListingsService {
     const items: ListingItem[] = filteredListings.map((listing) => {
       const landlord = listing.landlordId as unknown as { _id: unknown; fullName?: string };
       const coverPhoto = this.findCoverPhoto((listing.photos as IListingPhoto[]) || []);
+      const roomCategory = this.inferRoomCategory(
+        listing.roomCategory,
+        listing.maxOccupants,
+        listing.rentTiers as IRentTier[] | undefined
+      );
 
       return {
         listingId: String(listing._id),
@@ -635,6 +730,8 @@ export class ListingsService {
         colony: listing.colony,
         city: listing.city,
         monthlyRent: listing.monthlyRent,
+        roomCategoryId: ROOM_CATEGORIES_BY_NAME[roomCategory] ?? 3,
+        roomCategoryName: roomCategory,
         floorLevelId: FLOOR_LEVELS_BY_NAME[listing.floorLevel] ?? 0,
         furnishingTypeId: FURNISHING_TYPES_BY_NAME[listing.furnishingType] ?? 0,
         maxOccupants: listing.maxOccupants,
@@ -692,12 +789,19 @@ export class ListingsService {
     });
 
     const coverPhoto = this.findCoverPhoto(listing.photos as IListingPhoto[]);
+    const roomCategory = this.inferRoomCategory(
+      listing.roomCategory,
+      listing.maxOccupants,
+      listing.rentTiers as IRentTier[] | undefined
+    );
 
     return {
       listingId: String(listing._id),
       landlordId: String(landlord?._id ?? listing.landlordId),
       title: listing.title,
       description: listing.description ?? null,
+      roomCategoryId: ROOM_CATEGORIES_BY_NAME[roomCategory] ?? 3,
+      roomCategoryName: roomCategory,
       floorLevelId: FLOOR_LEVELS_BY_NAME[listing.floorLevel] ?? 0,
       floorName: listing.floorLevel,
       furnishingTypeId: FURNISHING_TYPES_BY_NAME[listing.furnishingType] ?? 0,

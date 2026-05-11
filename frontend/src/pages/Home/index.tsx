@@ -25,6 +25,7 @@ type Listing = {
   monthlyRent: number;
   rentTiers: { occupants: number; rent: number }[];
   maxOccupants: number;
+  roomCategoryName: string;
   landlordGender: string | null;
   roomFor: string | null;
   propertyTypeId: number | null;
@@ -215,6 +216,7 @@ export default function Home() {
                       monthlyRent={item.monthlyRent}
                       rentTiers={item.rentTiers ?? []}
                       maxOccupants={item.maxOccupants}
+                      roomCategoryName={item.roomCategoryName}
                       landlordGender={item.landlordGender}
                       roomFor={item.roomFor}
                       propertyTypeId={item.propertyTypeId}

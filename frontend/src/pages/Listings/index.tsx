@@ -19,6 +19,8 @@ type Listing = {
   monthlyRent: number;
   rentTiers: { occupants: number; rent: number }[];
   maxOccupants: number;
+  roomCategoryId: number;
+  roomCategoryName: string;
   landlordGender: string | null;
   roomFor: string | null;
   furnishingName: string;
@@ -40,6 +42,7 @@ type FilterState = {
   minRent: number;
   maxRent: number;
   maxOccupants: number[];
+  roomCategoryId: number[];
   furnishingTypeId: number[];
   foodPreferenceId: number[];
   coolingTypeId: number[];
@@ -57,6 +60,7 @@ const defaultFilters: FilterState = {
   minRent: RENT_MIN,
   maxRent: RENT_MAX,
   maxOccupants: [],
+  roomCategoryId: [],
   furnishingTypeId: [],
   foodPreferenceId: [],
   coolingTypeId: [],
@@ -120,6 +124,7 @@ export default function ListingsPage() {
       "minRent",
       "maxRent",
       "maxOccupants",
+      "roomCategoryId",
       "furnishingTypeId",
       "foodPreferenceId",
       "coolingTypeId",
@@ -159,6 +164,15 @@ export default function ListingsPage() {
       sanitized.delete("coolingTypeId");
     }
 
+    const rawRoomCategoryIds = parseNumberList(searchParams.get("roomCategoryId")).filter((value) =>
+      [1, 2, 3].includes(value),
+    );
+    if (rawRoomCategoryIds.length > 0) {
+      sanitized.set("roomCategoryId", rawRoomCategoryIds.join(","));
+    } else {
+      sanitized.delete("roomCategoryId");
+    }
+
     const rawGenders = parseGenderList(searchParams.get("gender"));
     if (rawGenders.length > 0) {
       sanitized.set("gender", rawGenders.join(","));
@@ -181,6 +195,9 @@ export default function ListingsPage() {
       minRent: Number(searchParams.get("minRent")) || defaultFilters.minRent,
       maxRent: Number(searchParams.get("maxRent")) || defaultFilters.maxRent,
       maxOccupants: parseNumberList(searchParams.get("maxOccupants")),
+      roomCategoryId: parseNumberList(searchParams.get("roomCategoryId")).filter((value) =>
+        [1, 2, 3].includes(value),
+      ),
       furnishingTypeId: parseNumberList(searchParams.get("furnishingTypeId")),
       foodPreferenceId: parseNumberList(searchParams.get("foodPreferenceId")).filter((value) =>
         [1, 2, 3].includes(value),
@@ -219,6 +236,7 @@ export default function ListingsPage() {
     if (debouncedFilters.minRent > RENT_MIN) params.set("minRent", String(debouncedFilters.minRent));
     if (debouncedFilters.maxRent < RENT_MAX) params.set("maxRent", String(debouncedFilters.maxRent));
     if (debouncedFilters.maxOccupants.length) params.set("maxOccupants", debouncedFilters.maxOccupants.join(","));
+    if (debouncedFilters.roomCategoryId.length) params.set("roomCategoryId", debouncedFilters.roomCategoryId.join(","));
     if (debouncedFilters.furnishingTypeId.length) params.set("furnishingTypeId", debouncedFilters.furnishingTypeId.join(","));
     if (debouncedFilters.foodPreferenceId.length) params.set("foodPreferenceId", debouncedFilters.foodPreferenceId.join(","));
     if (debouncedFilters.coolingTypeId.length) params.set("coolingTypeId", debouncedFilters.coolingTypeId.join(","));
@@ -295,6 +313,7 @@ export default function ListingsPage() {
     if (nextFilters.minRent > RENT_MIN) next.set("minRent", String(nextFilters.minRent));
     if (nextFilters.maxRent < RENT_MAX) next.set("maxRent", String(nextFilters.maxRent));
     if (nextFilters.maxOccupants.length) next.set("maxOccupants", nextFilters.maxOccupants.join(","));
+    if (nextFilters.roomCategoryId.length) next.set("roomCategoryId", nextFilters.roomCategoryId.join(","));
     if (nextFilters.furnishingTypeId.length) next.set("furnishingTypeId", nextFilters.furnishingTypeId.join(","));
     if (nextFilters.foodPreferenceId.length) next.set("foodPreferenceId", nextFilters.foodPreferenceId.join(","));
     if (nextFilters.coolingTypeId.length) next.set("coolingTypeId", nextFilters.coolingTypeId.join(","));
@@ -462,6 +481,7 @@ export default function ListingsPage() {
                           monthlyRent={item.monthlyRent}
                           rentTiers={item.rentTiers ?? []}
                           maxOccupants={item.maxOccupants}
+                          roomCategoryName={item.roomCategoryName}
                           landlordGender={item.landlordGender}
                           roomFor={item.roomFor}
                           propertyTypeId={item.propertyTypeId}

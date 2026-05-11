@@ -73,6 +73,9 @@ export const getAllListings = async (
       maxOccupants: parseNumberArray(req.query.maxOccupants as string).length > 0 
         ? parseNumberArray(req.query.maxOccupants as string) 
         : undefined,
+      roomCategoryId: parseNumberArray(req.query.roomCategoryId as string).length > 0
+        ? parseNumberArray(req.query.roomCategoryId as string)
+        : undefined,
       floorLevelId: parseNumberArray(req.query.floorLevelId as string).length > 0 
         ? parseNumberArray(req.query.floorLevelId as string) 
         : undefined,
@@ -224,6 +227,7 @@ export const createSingleListing = async (
         description?: string;
         securityDeposit?: number | null;
         propertyTypeId?: number;
+        roomCategoryId?: number;
         foodLevelId?: number;
         bedType?: "Single" | "Double" | "Mixed";
         singleBedCount?: number;
@@ -320,6 +324,7 @@ export const createSingleListing = async (
         description: room.description,
         securityDeposit: room.securityDeposit,
         propertyTypeId: room.propertyTypeId,
+        roomCategoryId: room.roomCategoryId,
         foodLevelId: room.foodLevelId,
         bedType: room.bedType,
         singleBedCount: room.singleBedCount,
@@ -401,6 +406,7 @@ type ListingEntryPayload = {
     description?: string;
     securityDeposit?: number | null;
     propertyTypeId?: number;
+    roomCategoryId?: number;
     foodLevelId?: number;
     bedType?: "Single" | "Double" | "Mixed";
     singleBedCount?: number;
@@ -547,6 +553,7 @@ export const createListingsWithMedia = async (
             description: room.description,
             securityDeposit: room.securityDeposit,
             propertyTypeId: room.propertyTypeId,
+            roomCategoryId: room.roomCategoryId,
             foodLevelId: room.foodLevelId,
             bedType: room.bedType,
             singleBedCount: room.singleBedCount,
@@ -609,6 +616,7 @@ export const updateListing = async (
         description?: string;
         securityDeposit?: number | null;
         propertyTypeId?: number;
+        roomCategoryId?: number;
         foodLevelId?: number;
         bedType?: "Single" | "Double" | "Mixed";
         singleBedCount?: number;
@@ -765,6 +773,7 @@ export const updateListing = async (
         description: room.description,
         securityDeposit: room.securityDeposit,
         propertyTypeId: room.propertyTypeId,
+        roomCategoryId: room.roomCategoryId,
         foodLevelId: room.foodLevelId,
         bedType: room.bedType,
         singleBedCount: room.singleBedCount,

@@ -52,6 +52,12 @@ export const PROJECT_STATUS_TYPES: Record<number, string> = {
   3: "New Launch",
 };
 
+export const ROOM_CATEGORIES: Record<number, string> = {
+  1: "Single",
+  2: "Shared",
+  3: "Unshared",
+};
+
 // Reverse maps (name → id) for API responses that need numeric IDs
 export const FLOOR_LEVELS_BY_NAME = Object.fromEntries(
   Object.entries(FLOOR_LEVELS).map(([id, name]) => [name, Number(id)])
@@ -73,6 +79,9 @@ export const COOLING_TYPES_BY_NAME = Object.fromEntries(
 );
 export const PROJECT_STATUS_TYPES_BY_NAME = Object.fromEntries(
   Object.entries(PROJECT_STATUS_TYPES).map(([id, name]) => [name, Number(id)])
+);
+export const ROOM_CATEGORIES_BY_NAME = Object.fromEntries(
+  Object.entries(ROOM_CATEGORIES).map(([id, name]) => [name, Number(id)])
 );
 
 /** Resolve an ID or string to the canonical string name for a lookup */
