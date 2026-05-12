@@ -1,0 +1,54 @@
+{
+  "success": true,
+  "data": [
+    {
+      "tenantName": "Dheeraj Jangid",
+      "roomTitle": "Fully Furnished Room in Tonk Phatak"
+    },
+    {
+      "roomTitle": "Fully Furnished Room in Tonk Phatak"
+    },
+    {
+      "tenantName": "Rohit Jain",
+      "roomTitle": "Fully Furnished Room in Ramganj Bazar"
+    },
+    {
+      "tenantName": "Rohit Jain",
+      "roomTitle": "Fully Furnished Room in Prem Pura Village"
+    },
+    {
+      "tenantName": "Bharat Pareek",
+      "roomTitle": "Unfurnished Room in Ramganj Bazar"
+    },
+    {
+      "rentPayments": [
+        {
+          "month": "2026-05",
+          "paymentStatus": "OnTime",
+          "markedAt": "2026-05-04T13:20:44.234Z",
+          "updateCount": 0,
+          "paymentSlipUrl": "https://stfsl.blob.core.windows.net/uploads/1777900843429-386038257.webp?sv=2026-02-06&spr=https&st=2026-05-04T13%3A15%3A43Z&se=2031-05-03T13%3A20%3A43Z&sr=b&sp=r&sig=j8tSDuB53IhAhOf30xlc74mUT5WvSIK4kVL5fdnHANw%3D",
+          "paymentSlipBlobId": "1777900843429-386038257.webp"
+        }
+      ],
+      "tenantName": "chaturbhuj joshi",
+      "roomTitle": "Fully Furnished Room in Bais Godam"
+    },
+    {
+      "rentPayments": [
+        {
+          "month": "2026-05",
+          "paymentStatus": "OnTime",
+          "markedAt": "2026-05-04T13:10:28.333Z"
+        }
+      ],
+      "tenantName": "Akshat Sharma",
+      "roomTitle": "Semi-Furnished Room in Arjun Nagar"
+    },
+    {
+      "rentPayments": [],
+      "tenantName": "Dheeraj Jangid",
+      "roomTitle": "Fully Furnished Room in Ganpati Nagar"
+    }
+  ]
+}

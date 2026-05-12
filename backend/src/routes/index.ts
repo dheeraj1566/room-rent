@@ -7,6 +7,7 @@ import favoritesRoutes from "./favorites.routes";
 import testimonialsRoutes from "./testimonials.routes";
 import connectionsRoutes from "./connections.routes";
 import adminRoutes from "./admin.routes";
+import landlordRoutes from "./landlord.routes";
 
 const router = Router();
 
@@ -26,6 +27,8 @@ router.use("/uploads", uploadRoutes);
 router.use("/favorites", favoritesRoutes);
 router.use("/testimonials", testimonialsRoutes);
 router.use("/connections", connectionsRoutes);
+
+router.use("/landlord", landlordRoutes);
 router.use("/admin", adminRoutes);
 
 export default router;

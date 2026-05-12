@@ -131,6 +131,14 @@ function ReviewStars({ value, size = 16 }: { value: number; size?: number }) {
   );
 }
 
+function getAvailabilityText(roomCategoryName: string, maxOccupants: number) {
+  if (roomCategoryName === "Shared") {
+    return `${maxOccupants} seat${maxOccupants === 1 ? "" : "s"} available`;
+  }
+
+  return `Up to ${maxOccupants} occupant${maxOccupants === 1 ? "" : "s"}`;
+}
+
 export default function ListingDetailsPage() {
   const { listingId } = useParams();
   const navigate = useNavigate();
@@ -447,7 +455,7 @@ export default function ListingDetailsPage() {
         { label: "Room Category", value: item.roomCategoryName, icon: <Users size={16} /> },
         { label: "Floor", value: item.floorName, icon: <Home size={16} /> },
         { label: "Furnishing", value: item.furnishingName, icon: <Sofa size={16} /> },
-        { label: "Max Occupants", value: `${item.maxOccupants} ${item.maxOccupants === 1 ? "Person" : "People"}`, icon: <Users size={16} /> },
+        { label: item.roomCategoryName === "Shared" ? "Seats Available" : "Max Occupants", value: item.roomCategoryName === "Shared" ? `${item.maxOccupants} seat${item.maxOccupants === 1 ? "" : "s"}` : `${item.maxOccupants} ${item.maxOccupants === 1 ? "Person" : "People"}`, icon: <Users size={16} /> },
         { label: "Food Preference", value: item.preferenceName, icon: <Utensils size={16} /> },
         { label: "Smoking", value: item.allowSmoking ? "Allowed" : "Not Allowed", icon: <ShieldCheck size={16} /> },
         { label: "Available From", value: formatDisplayDate(item.availableFrom), icon: <CalendarDays size={16} /> },
@@ -569,7 +577,7 @@ export default function ListingDetailsPage() {
                       </span>
                       <span className="listing-card-meta-item">
                         <Users size={16} />
-                        Up to {item.maxOccupants} occupants
+                        {getAvailabilityText(item.roomCategoryName, item.maxOccupants)}
                       </span>
                       <span className="listing-card-meta-item">
                         <ShieldCheck size={16} />
@@ -730,7 +738,7 @@ export default function ListingDetailsPage() {
                       </div>
                       <p className="listing-details-sidebar-occupants">
                         {item.roomCategoryName === "Shared"
-                          ? `Shared room for up to ${item.maxOccupants} occupants`
+                          ? `${item.maxOccupants} seat${item.maxOccupants === 1 ? "" : "s"} currently available`
                           : item.roomCategoryName === "Unshared"
                             ? `Entire room for up to ${item.maxOccupants} occupants`
                             : "Single occupancy room"}

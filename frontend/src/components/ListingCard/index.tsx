@@ -63,6 +63,10 @@ export default function ListingCard({
   const relativeTime = useMemo(() => formatRelativeTime(createdAt), [createdAt]);
   const titleAccent = /studio/i.test(title) || /mansarovar/i.test(title);
   const occupantIcons = Math.min(Math.max(maxOccupants, 1), 4);
+  const occupancyLabel =
+    roomCategoryName === "Shared"
+      ? `${maxOccupants} seat${maxOccupants === 1 ? "" : "s"} available`
+      : `${maxOccupants} ${maxOccupants === 1 ? "occupant" : "occupants"}`;
 
   return (
     <article
@@ -138,7 +142,7 @@ export default function ListingCard({
                 <Users key={`${listingId}-occupant-${index}`} size={14} />
               ))}
             </span>
-            <span>{maxOccupants} {maxOccupants === 1 ? "occupant" : "occupants"}</span>
+            <span>{occupancyLabel}</span>
           </span>
           <span className="listing-card-meta-item">
             <Sofa size={14} />

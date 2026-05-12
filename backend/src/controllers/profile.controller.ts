@@ -1,17 +1,10 @@
 import type { Request, Response } from "express";
 import crypto from "node:crypto";
-import nodemailer from "nodemailer";
 import User from "../models/User.js";
 import { CryptoService } from "../services/crypto.service.js";
+import EmailService from "../services/email.service.js";
 import env from "../config/env.js";
 import { isValidEmail } from "../utils/validators.js";
-
-const mailer = nodemailer.createTransport({
-  host: env.SMTP_HOST,
-  port: env.SMTP_PORT,
-  secure: env.SMTP_SECURE,
-  auth: { user: env.SMTP_USER, pass: env.SMTP_PASS },
-});
 
 const sha256Hex = (value: string) =>
   crypto.createHash("sha256").update(value).digest("hex");
@@ -305,18 +298,20 @@ const saveProfile = async (
 
   // Send verification email if needed
   let emailSent = false;
-  if (rawVerifyToken && env.SMTP_USER && env.SMTP_PASS) {
-    const targetEmail = (updates.email as string | undefined) ?? user.email;
+  if (rawVerifyToken && EmailService.isConfigured()) {
+    const targetEmail = (updates.email as string | undefined) ?? user.email ?? "";
     const name = (updates.fullName as string | undefined) ?? user.fullName ?? "there";
     const verifyLink = `${env.CLIENT_URL}/verify-email?token=${rawVerifyToken}`;
     try {
-      await mailer.sendMail({
-        from: env.EMAIL_FROM || env.SMTP_USER,
+      const result = await EmailService.send({
         to: targetEmail,
         subject: "Confirm your email – Roombaazi",
         html: buildVerifyEmailHtml(verifyLink, name),
+        purpose: "profile_email_verification",
+        relatedUserId: String(user._id),
+        metadata: { flow: "profile-update" },
       });
-      emailSent = true;
+      emailSent = result.success;
     } catch (err) {
       console.error("Profile verify email send failed:", err);
     }

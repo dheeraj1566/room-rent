@@ -2,10 +2,10 @@ import type { Request, Response } from "express";
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
-import nodemailer from "nodemailer";
 import env from "../config/env.js";
 import User from "../models/User.js";
 import PasswordResetRequest from "../models/PasswordResetRequest.js";
+import EmailService from "../services/email.service.js";
 import {
   escapeHtml,
   isNonEmptyString,
@@ -27,15 +27,6 @@ import {
 } from "../utils/jwtHelpers.js";
 
 const googleClient = new OAuth2Client();
-const mailer = nodemailer.createTransport({
-  host: env.SMTP_HOST,
-  port: env.SMTP_PORT,
-  secure: env.SMTP_SECURE,
-  auth: {
-    user: env.SMTP_USER,
-    pass: env.SMTP_PASS,
-  },
-});
 const RESET_OTP_TTL_MINUTES = 10;
 const OTP_RESEND_LIMIT = 3;
 const OTP_RESEND_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -274,7 +265,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const verifyToken = sha256Hex(rawToken);
     const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    await User.create({
+    const createdUser = await User.create({
       fullName: normalizedFullName,
       email: normalizedEmail,
       phone: normalizedPhone,
@@ -288,15 +279,17 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const verifyLink = `${env.CLIENT_URL}/verify-email?token=${rawToken}`;
 
     let emailSent = false;
-    if (env.SMTP_USER && env.SMTP_PASS) {
+    if (EmailService.isConfigured()) {
       try {
-        await mailer.sendMail({
-          from: env.EMAIL_FROM || env.SMTP_USER,
+        const result = await EmailService.send({
           to: normalizedEmail,
           subject: "Confirm your email – Roombaazi",
           html: buildVerifyEmailHtml(verifyLink, normalizedFullName),
+          purpose: "register_verification",
+          relatedUserId: String(createdUser._id),
+          metadata: { flow: "register" },
         });
-        emailSent = true;
+        emailSent = result.success;
       } catch (emailError) {
         console.error("Verification email failed to send:", emailError);
         // Don't fail registration if email send errors — user account is created
@@ -382,13 +375,15 @@ export const resendVerificationEmail = async (req: Request, res: Response): Prom
 
     const verifyLink = `${env.CLIENT_URL}/verify-email?token=${rawToken}`;
 
-    if (env.SMTP_USER && env.SMTP_PASS) {
+    if (EmailService.isConfigured()) {
       try {
-        await mailer.sendMail({
-          from: env.EMAIL_FROM || env.SMTP_USER,
+        await EmailService.send({
           to: normalizedEmail,
           subject: "Confirm your email – Roombaazi",
           html: buildVerifyEmailHtml(verifyLink, user.fullName),
+          purpose: "resend_verification",
+          relatedUserId: String(user._id),
+          metadata: { flow: "resend-verification" },
         });
       } catch (emailError) {
         console.error("Resend verification email failed:", emailError);
@@ -517,17 +512,19 @@ export const forgotPassword = async (
       expiresAt: new Date(Date.now() + RESET_OTP_TTL_MINUTES * 60 * 1000),
     });
 
-    if (!env.SMTP_USER || !env.SMTP_PASS) {
+    if (!EmailService.isConfigured()) {
       console.error("Forgot password email is not configured: missing SMTP_USER or SMTP_PASS.");
       res.status(500).json({ error: "Email service is not configured" });
       return;
     }
 
-    await mailer.sendMail({
-      from: env.EMAIL_FROM || env.SMTP_USER,
+    await EmailService.send({
       to: user.email,
       subject: "Reset Your Roombaazi Password",
       html: buildResetPasswordEmailHtml(otpCode, resetLink),
+      purpose: "forgot_password",
+      relatedUserId: String(user._id),
+      metadata: { flow: "forgot-password" },
     });
 
     res.status(200).json({ message: genericMessage });

@@ -344,10 +344,11 @@ export default function AddListing() {
       
       // Check if rent for max occupants is set
       const maxOccupantsRent = room.rentTiers.find(tier => tier.occupants === maxOccupants)?.rent;
+      const hasAnySharedRent = room.rentTiers.some((tier) => tier.rent !== "" && Number(tier.rent) > 0);
       
       if (
         room.maxOccupants === "" ||
-        !maxOccupantsRent || Number(maxOccupantsRent) === 0 ||
+        (!isSharedRoom && (!maxOccupantsRent || Number(maxOccupantsRent) === 0)) ||
         room.furnishingTypeId === "" ||
         room.foodPreferenceId === "" ||
         room.coolingTypeId === "" ||
@@ -369,6 +370,9 @@ export default function AddListing() {
       }
       if (isSharedRoom && room.rentTiers.length !== maxOccupants) {
         return "Please add rent for each shared occupancy option.";
+      }
+      if (isSharedRoom && !hasAnySharedRent) {
+        return "Please add at least one rent option for the shared room.";
       }
       if (isUnsharedRoom && room.rentTiers.length > 1) {
         return "Unshared rooms should use one monthly room rent.";
@@ -683,7 +687,7 @@ export default function AddListing() {
                         return (
                           <>
                       <div className="field">
-                        <label>Max Occupants *</label>
+                        <label>{isSharedCategory ? "Seats Available *" : "Max Occupants *"}</label>
                         {isSingleCategory ? (
                           <input className="input-style" value="1 occupant" disabled />
                         ) : (
@@ -699,9 +703,9 @@ export default function AddListing() {
                       </div>
 
                       <div className="field">
-                        <label>{isSharedCategory ? "Rent for Full Shared Occupancy (₹) *" : "Monthly Rent (₹) *"} {room.maxOccupants && Number(room.maxOccupants) > 0 ? <span className="add-listing-occupant-hint">for {room.maxOccupants} occupants</span> : null}</label>
+                        <label>{isSharedCategory ? "Rent for Full Shared Occupancy (₹)" : "Monthly Rent (₹) *"} {room.maxOccupants && Number(room.maxOccupants) > 0 ? <span className="add-listing-occupant-hint">for {room.maxOccupants} occupants</span> : null}</label>
                         <input
-                          className={`input-style${step2Submitted && !(room.rentTiers.find(t => t.occupants === Number(room.maxOccupants))?.rent) ? " input-error" : ""}`}
+                          className={`input-style${step2Submitted && !isSharedCategory && !(room.rentTiers.find(t => t.occupants === Number(room.maxOccupants))?.rent) ? " input-error" : ""}`}
                           value={room.maxOccupants && Number(room.maxOccupants) > 0 ? (room.rentTiers.find(tier => tier.occupants === Number(room.maxOccupants))?.rent || "") : room.monthlyRent}
                           onChange={(e) => {
                             const value = e.target.value ? Number(e.target.value.replace(/\D/g, "")) : "";
@@ -713,6 +717,9 @@ export default function AddListing() {
                           }}
                           placeholder="e.g. 12000"
                         />
+                        {isSharedCategory ? (
+                          <span className="field-note">Optional. You can leave this blank and only add seat-wise pricing below.</span>
+                        ) : null}
                       </div>
 
                       {isSharedCategory && room.maxOccupants && Number(room.maxOccupants) > 1 ? (

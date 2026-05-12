@@ -254,13 +254,12 @@ export const createSingleListing = async (
       room.maxOccupants === undefined ||
       room.foodPreferenceId === undefined ||
       room.allowSmoking === undefined ||
-      room.monthlyRent === undefined ||
       room.furnishingTypeId === undefined ||
       !room.availableFrom
     ) {
       res.status(400).json({
         error:
-          "Room must include floorLevelId, maxOccupants, foodPreferenceId, allowSmoking, monthlyRent, furnishingTypeId, and availableFrom",
+          "Room must include floorLevelId, maxOccupants, foodPreferenceId, allowSmoking, furnishingTypeId, and availableFrom",
       });
       return;
     }
@@ -658,13 +657,12 @@ export const updateListing = async (
       room.maxOccupants === undefined ||
       room.foodPreferenceId === undefined ||
       room.allowSmoking === undefined ||
-      room.monthlyRent === undefined ||
       room.furnishingTypeId === undefined ||
       !room.availableFrom
     ) {
       res.status(400).json({
         error:
-          "Room must include floorLevelId, maxOccupants, foodPreferenceId, allowSmoking, monthlyRent, furnishingTypeId, and availableFrom",
+          "Room must include floorLevelId, maxOccupants, foodPreferenceId, allowSmoking, furnishingTypeId, and availableFrom",
       });
       return;
     }

@@ -20,6 +20,7 @@ export const swaggerSpec = {
     { name: "Testimonials", description: "User reviews and ratings" },
     { name: "Connections", description: "Tenant-landlord contact requests" },
     { name: "Admin", description: "Admin-only management endpoints" },
+    { name: "Landlord", description: "Landlord-specific endpoints" },
   ],
   components: {
     securitySchemes: {
@@ -39,6 +40,62 @@ export const swaggerSpec = {
     },
   },
   paths: {
+    "/landlord/rooms-status": {
+      get: {
+        tags: ["Landlord"],
+        summary: "Get all rooms, tenants, and rent status for a landlord",
+        parameters: [
+          {
+            name: "landlordId",
+            in: "query",
+            required: true,
+            schema: { type: "string" },
+            description: "Landlord's user ID"
+          }
+        ],
+        responses: {
+          "200": {
+            description: "List of rooms, tenants, and rent status",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    data: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          tenantName: { type: "string" },
+                          roomTitle: { type: "string" },
+                          rentPayments: {
+                            type: "array",
+                            items: {
+                              type: "object",
+                              properties: {
+                                month: { type: "string" },
+                                paymentStatus: { type: "string" },
+                                markedAt: { type: "string", format: "date-time" },
+                                updateCount: { type: "number" },
+                                paymentSlipUrl: { type: "string" },
+                                paymentSlipBlobId: { type: "string" }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { description: "landlordId is required" },
+          "500": { description: "Server error" }
+        }
+      }
+    },
     // Health
     "/health": {
       get: {

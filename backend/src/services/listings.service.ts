@@ -211,8 +211,12 @@ export class ListingsService {
   ): number {
     if (Number.isFinite(monthlyRent)) return Number(monthlyRent);
 
-    if (roomCategory === "Shared" && Array.isArray(rentTiers) && rentTiers.length > 0) {
-      return rentTiers.find((tier) => tier.occupants === maxOccupants)?.rent ?? rentTiers[rentTiers.length - 1]!.rent;
+    if (Array.isArray(rentTiers) && rentTiers.length > 0) {
+      if (roomCategory === "Shared") {
+        return rentTiers.find((tier) => tier.occupants === maxOccupants)?.rent ?? rentTiers[rentTiers.length - 1]!.rent;
+      }
+
+      return rentTiers[rentTiers.length - 1]!.rent;
     }
 
     return 0;
